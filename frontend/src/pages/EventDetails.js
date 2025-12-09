@@ -4,11 +4,12 @@ import { getEvent, getTechnicians } from '../utils/api';
 import { useAssignments } from '../hooks/useAssignments';
 import '../styles/EventDetails.css';
 import {
-  getEventRequirements,
+  getEventRequirementsWithCoverage,
   createEventRequirement,
-  updateRequirement,
   deleteRequirement
 } from '../utils/api';
+
+
 
 
 const RATE_TYPES = ['hourly', 'half-day', 'full-day'];
@@ -23,9 +24,9 @@ const EventDetails = ({ eventId, onBack }) => {
     assignments,
     loading: loadingAssignments,
     addAssignment,
-    updateOne,
     removeAssignment
   } = useAssignments(eventId);
+
 
   const [formData, setFormData] = useState({
     technician_id: '',
@@ -34,8 +35,10 @@ const EventDetails = ({ eventId, onBack }) => {
     rate_type: 'hourly',
     assignment_date: '',
     start_time: '',
-    end_time: ''
+    end_time: '',
+    requirement_id: ''
   });
+
 
   const handleAddAssignment = async (e) => {
     e.preventDefault();
@@ -53,7 +56,8 @@ const EventDetails = ({ eventId, onBack }) => {
       customer_bill: 0,
       assignment_date: formData.assignment_date || null,
       start_time: formData.start_time || null,
-      end_time: formData.end_time || null
+      end_time: formData.end_time || null,
+      requirement_id: formData.requirement_id || null
     };
 
     try {
@@ -65,12 +69,15 @@ const EventDetails = ({ eventId, onBack }) => {
         rate_type: 'hourly',
         assignment_date: '',
         start_time: '',
-        end_time: ''
+        end_time: '',
+        requirement_id: ''
       });
     } catch (err) {
       console.error('Failed to add assignment', err);
     }
   };
+
+
 
   const [requirements, setRequirements] = useState([]);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
@@ -84,7 +91,7 @@ const EventDetails = ({ eventId, onBack }) => {
         const [eventRes, techRes, reqRes] = await Promise.all([
           getEvent(eventId),
           getTechnicians(),
-          getEventRequirements(eventId)
+          getEventRequirementsWithCoverage(eventId)
         ]);
         setEvent(eventRes.data);
         setTechnicians(techRes.data);
@@ -316,44 +323,50 @@ const handleDeleteRequirement = async (id) => {
                   <th>End</th>
                   <th>Strike</th>
                   <th>Position</th>
-                  <th>Techs Needed</th>
+                  <th>Coverage</th>
                   <th>Assigned Techs</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {requirements.map(r => (
-                  <tr key={r.id}>
-                    <td>{r.requirement_date || '—'}</td>
-                    <td>{r.room_or_location}</td>
-                    <td>{r.set_time || '—'}</td>
-                    <td>{r.start_time || '—'}</td>
-                    <td>{r.end_time || '—'}</td>
-                    <td>{r.strike_time || '—'}</td>
-                    <td>{r.position || '—'}</td>
-                    <td>{r.techs_needed}</td>
-                    <td>{r.assigned_techs || 0}</td>
-                    <td>
-                      <button
-                        className="btn btn-small btn-delete"
-                        onClick={() => handleDeleteRequirement(r.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {requirements.map(r => {
+                  const assignedNames = r.assigned_techs
+                    ? r.assigned_techs.map(t => t.name).join(', ')
+                    : '';
+                  const coverageStatus = `${r.assigned_count || 0}/${r.techs_needed}`;
+                  
+                  return (
+                    <tr key={r.id}>
+                      <td>{r.requirement_date || '—'}</td>
+                      <td>{r.room_or_location}</td>
+                      <td>{r.set_time || '—'}</td>
+                      <td>{r.start_time || '—'}</td>
+                      <td>{r.end_time || '—'}</td>
+                      <td>{r.strike_time || '—'}</td>
+                      <td>{r.position || '—'}</td>
+                      <td>
+                        <strong>{coverageStatus}</strong>
+                      </td>
+                      <td>
+                        {assignedNames ? assignedNames : '—'}
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-small btn-delete"
+                          onClick={() => handleDeleteRequirement(r.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
-
-
-
-      <section className="assignments-section">
-        <h2>Assignments</h2>
-
+      <section>
         <form className="assignment-form" onSubmit={handleAddAssignment}>
           <div className="form-row">
             <div className="form-group">
@@ -368,6 +381,22 @@ const handleDeleteRequirement = async (id) => {
                 {technicians.map(tech => (
                   <option key={tech.id} value={tech.id}>
                     {tech.name} ({tech.position || 'No primary position'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Requirement / Room Slot</label>
+              <select
+                name="requirement_id"
+                value={formData.requirement_id}
+                onChange={handleFormChange}
+              >
+                <option value="">Select requirement (optional)</option>
+                {requirements.map(req => (
+                  <option key={req.id} value={req.id}>
+                    {req.requirement_date} – {req.room_or_location} – {req.position || 'Any'} (Techs needed: {req.techs_needed})
                   </option>
                 ))}
               </select>
@@ -410,7 +439,6 @@ const handleDeleteRequirement = async (id) => {
               </select>
             </div>
           </div>
-
           <div className="form-row">
             <div className="form-group">
               <label>Date</label>
@@ -444,7 +472,6 @@ const handleDeleteRequirement = async (id) => {
             + Add Assignment
           </button>
         </form>
-
         {loadingAssignments ? (
           <p>Loading assignments…</p>
         ) : assignments.length === 0 ? (

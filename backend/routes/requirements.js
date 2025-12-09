@@ -9,16 +9,24 @@ const router = express.Router();
  * GET /api/events/:eventId/requirements
  * Get all requirements for an event
  */
-router.get('/events/:eventId/requirements', async (req, res, next) => {
+/**
+ * GET /api/events/:eventId/requirements/with-coverage
+ * Get all requirements with assigned technician details
+ */
+router.get('/events/:eventId/requirements/with-coverage', async (req, res, next) => {
   try {
     const { eventId } = req.params;
-
+    
     const requirements = await query(
       `
-      SELECT er.*,
-             COUNT(ea.id) as assigned_techs
+      SELECT 
+        er.*,
+        COUNT(DISTINCT ea.id) as assigned_count,
+        GROUP_CONCAT(DISTINCT t.id) as assigned_tech_ids,
+        GROUP_CONCAT(DISTINCT t.name) as assigned_tech_names
       FROM event_requirements er
       LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
+      LEFT JOIN technicians t ON t.id = ea.technician_id
       WHERE er.event_id = ?
       GROUP BY er.id
       ORDER BY er.start_time ASC
@@ -26,11 +34,28 @@ router.get('/events/:eventId/requirements', async (req, res, next) => {
       [eventId]
     );
 
-    res.json(requirements);
+
+    // Transform the comma-separated strings into arrays of objects
+    const formattedRequirements = requirements.map(req => {
+      const ids = req.assigned_tech_ids ? req.assigned_tech_ids.split(',').filter(Boolean) : [];
+      const names = req.assigned_tech_names ? req.assigned_tech_names.split(',').filter(Boolean) : [];
+      
+      return {
+        ...req,
+        assigned_count: parseInt(req.assigned_count) || 0,
+        assigned_techs: ids.map((id, idx) => ({
+          id,
+          name: names[idx] || 'Unknown'
+        }))
+      };
+    });
+
+    res.json(formattedRequirements);
   } catch (err) {
     next(err);
   }
 });
+
 
 /**
  * POST /api/events/:eventId/requirements
