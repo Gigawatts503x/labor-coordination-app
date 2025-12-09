@@ -1,0 +1,348 @@
+/* frontend/src/styles/EventDetails.css */
+
+.event-details {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.event-details.error {
+  color: #d32f2f;
+  padding: 20px;
+  background: #ffebee;
+  border-radius: 8px;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  gap: 40px;
+}
+
+.event-header h1 {
+  font-size: 28px;
+  color: #1a73e8;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.event-header p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.event-header p strong {
+  color: #333;
+}
+
+.event-summary {
+  background: #f1f3f4;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 240px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.event-summary h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.event-summary p {
+  margin: 8px 0;
+  font-size: 15px;
+  color: #333;
+}
+
+.event-summary p strong {
+  font-weight: 600;
+}
+
+/* Assignments Section */
+.assignments-section {
+  margin-top: 30px;
+}
+
+.assignments-section h2 {
+  font-size: 22px;
+  color: #1a73e8;
+  margin: 0 0 20px 0;
+  font-weight: 600;
+}
+
+/* Form */
+.assignment-form {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  border: 1px solid #e0e0e0;
+}
+
+.assignment-form .form-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1.5fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.assignment-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.assignment-form .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.assignment-form .form-group input,
+.assignment-form .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background-color: white;
+  color: #333;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.assignment-form .form-group input::placeholder {
+  color: #999;
+}
+
+.assignment-form .form-group input:focus,
+.assignment-form .form-group select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  gap: 6px;
+}
+
+.btn:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background-color: #f1f3f4;
+  color: #1a73e8;
+  border: 1px solid #dadce0;
+}
+
+.btn-secondary:hover {
+  background-color: #e8eaed;
+}
+
+.btn-success {
+  background-color: #1a73e8;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #1557b0;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+}
+
+.btn-delete {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-delete:hover {
+  background-color: #f5c6cb;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Table */
+.table-container {
+  padding-top: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+}
+
+.assignments-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.assignments-table thead {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.assignments-table thead th {
+  padding: 10px 20px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 12px;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.assignments-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.assignments-table tbody tr:hover {
+  background-color: #fafafa;
+}
+
+.assignments-table tbody td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #555;
+}
+
+.assignments-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 15px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .event-header {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .event-summary {
+    width: 100%;
+  }
+
+  .assignment-form .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .event-details {
+    padding: 16px;
+  }
+
+  .event-header h1 {
+    font-size: 22px;
+  }
+
+  .assignment-form {
+    padding: 16px;
+  }
+
+  .assignment-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .assignments-table thead {
+    display: none;
+  }
+
+  .assignments-table tbody,
+  .assignments-table tr,
+  .assignments-table td {
+    display: block;
+  }
+
+  .assignments-table tr {
+    margin-bottom: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .assignments-table td {
+    padding: 12px;
+    border: none;
+    text-align: right;
+  }
+
+  .assignments-table td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+
+  .assignments-table td:last-child {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .event-details {
+    padding: 12px;
+  }
+
+  .event-header h1 {
+    font-size: 20px;
+  }
+
+  .assignment-form .form-group label {
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 9px 16px;
+    font-size: 13px;
+  }
+
+  .btn-small {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}

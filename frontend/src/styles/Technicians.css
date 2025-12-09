@@ -1,0 +1,331 @@
+/* frontend/src/styles/Technicians.css */
+
+.technicians {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.technicians-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.technicians-header h1 {
+  font-size: 32px;
+  color: #1a73e8;
+}
+
+/* Form */
+.technician-form {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.technician-form h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-actions .btn {
+  flex: 1;
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background-color: #e0e0e0;
+}
+
+/* Table */
+.technicians-list h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.technicians-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.technicians-table thead {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #ddd;
+}
+
+.technicians-table th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.technicians-table td {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.technicians-table tbody tr:hover {
+  background-color: #fafafa;
+}
+
+.technicians-table .name {
+  font-weight: 600;
+  color: #1a73e8;
+}
+
+.technicians-table .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit {
+  background-color: #1a73e8;
+  color: white;
+}
+
+.btn-edit:hover {
+  background-color: #1557b0;
+}
+
+.btn-delete {
+  background-color: #d32f2f;
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #b71c1c;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  background: white;
+  border-radius: 8px;
+}
+
+.error {
+  background: #fee;
+  padding: 20px;
+  border-radius: 8px;
+  color: #c33;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .technicians-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .technicians-table {
+    font-size: 12px;
+  }
+
+  .technicians-table th,
+  .technicians-table td {
+    padding: 10px;
+  }
+
+  .technicians-table .actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .btn-small {
+    width: 100%;
+  }
+}
+/* Add to existing Technicians.css */
+
+.btn-positions {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.btn-positions:hover {
+  background-color: #7b1fa2;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.add-position-form {
+  margin-bottom: 20px;
+}
+
+.form-row-inline {
+  display: flex;
+  gap: 10px;
+}
+
+.position-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.position-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.positions-list {
+  margin-top: 20px;
+}
+
+.position-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.position-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #e3f2fd;
+  color: #1a73e8;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.position-tag .remove-btn {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+.position-tag .remove-btn:hover {
+  color: #d32f2f;
+}

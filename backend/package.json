@@ -1,0 +1,35 @@
+{
+  "name": "labor-coordinator-backend",
+  "version": "0.1.0",
+  "description": "Express backend for labor coordinator app",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "test": "echo \"Tests not yet implemented\"",
+    "db:init": "node setup/initDb.js"
+  },
+  "keywords": [
+    "labor",
+    "scheduling",
+    "invoicing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-writer": "^1.6.0",
+    "date-fns": "^2.30.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "joi": "^17.11.0",
+    "pdfkit": "^0.13.0",
+    "pg": "^8.11.2",
+    "sqlite3": "^5.1.7",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

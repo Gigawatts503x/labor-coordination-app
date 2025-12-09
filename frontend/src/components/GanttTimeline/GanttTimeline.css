@@ -1,0 +1,362 @@
+/**
+ * GanttTimeline.css - Complete styling for Gantt component
+ */
+
+.gantt-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* ===== CONTROLS ===== */
+
+.gantt-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: white;
+  border-bottom: 1px solid #e1e8ed;
+  flex-wrap: wrap;
+}
+
+.gantt-controls h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #2c3e50;
+  flex: 1;
+  min-width: 200px;
+}
+
+.tech-search {
+  padding: 10px 16px;
+  border: 1px solid #d0d7e0;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 200px;
+  transition: all 0.3s ease;
+}
+
+.tech-search:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.granularity-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.granularity-controls label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #555;
+}
+
+.granularity-controls select {
+  padding: 8px 12px;
+  border: 1px solid #d0d7e0;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+/* ===== MAIN CONTAINER ===== */
+
+.gantt-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ===== SIDEBAR ===== */
+
+.gantt-sidebar {
+  width: 250px;
+  background: white;
+  border-right: 1px solid #e1e8ed;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e8ed;
+  font-weight: 600;
+  font-size: 12px;
+  color: #666;
+  z-index: 2;
+}
+
+.tech-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tech-row {
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #f0f2f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tech-row:hover {
+  background: #f8f9fa;
+}
+
+.tech-row.selected {
+  background: #e3f2fd;
+  border-left: 3px solid #3498db;
+  padding-left: 9px;
+}
+
+.tech-row strong {
+  display: block;
+  font-size: 14px;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tech-row small {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.tech-rate-col {
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ===== GRID WRAPPER ===== */
+
+.gantt-grid-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+/* ===== HEADER ===== */
+
+.gantt-header {
+  display: grid;
+  grid-auto-columns: minmax(120px, 1fr);
+  gap: 0;
+  padding: 0;
+  background: #f8f9fa;
+  border-bottom: 2px solid #d0d7e0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.header-cell {
+  padding: 12px 8px;
+  border-right: 1px solid #e1e8ed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  min-width: 120px;
+}
+
+.header-cell.empty {
+  width: 250px;
+  flex-shrink: 0;
+  border-right: 1px solid #d0d7e0;
+  background: white;
+}
+
+.header-cell .time {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.header-cell .date {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* ===== GRID ROWS ===== */
+
+.gantt-grid {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.gantt-row {
+  display: grid;
+  grid-auto-columns: minmax(120px, 1fr);
+  gap: 0;
+  border-bottom: 1px solid #f0f2f5;
+  min-height: 60px;
+}
+
+.row-spacer {
+  width: 250px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #e1e8ed;
+}
+
+/* ===== CELLS ===== */
+
+.gantt-cell {
+  position: relative;
+  border-right: 1px solid #e1e8ed;
+  background: #f9fafb;
+  min-width: 120px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.gantt-cell:active {
+  cursor: grabbing;
+}
+
+.gantt-cell.empty:hover {
+  background: #eef4fd;
+}
+
+.gantt-cell.assigned {
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.gantt-cell.assigned:hover {
+  filter: brightness(0.9);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.gantt-cell.hovered {
+  background: #e3f2fd !important;
+  box-shadow: inset 0 0 0 2px #3498db;
+}
+
+.gantt-cell.dragging {
+  background: #ffd54f !important;
+  opacity: 0.6;
+}
+
+.assignment-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== DRAG PREVIEW ===== */
+
+.drag-preview {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.drag-preview p {
+  margin: 4px 0;
+}
+
+.drag-preview p:last-child {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd54f;
+}
+
+/* ===== SCROLLBAR ===== */
+
+.gantt-grid::-webkit-scrollbar,
+.gantt-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gantt-grid::-webkit-scrollbar-track,
+.gantt-sidebar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.gantt-grid::-webkit-scrollbar-thumb,
+.gantt-sidebar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.gantt-grid::-webkit-scrollbar-thumb:hover,
+.gantt-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1024px) {
+  .gantt-sidebar {
+    width: 180px;
+  }
+  
+  .header-cell,
+  .gantt-cell {
+    min-width: 100px;
+  }
+  
+  .sidebar-header,
+  .row-spacer {
+    width: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .gantt-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .tech-search {
+    width: 100%;
+  }
+}
