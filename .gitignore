@@ -34,3 +34,4 @@ data/*.db
 
 # OS
 Thumbs.db
+*.code-workspace
