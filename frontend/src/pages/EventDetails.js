@@ -694,6 +694,8 @@ const EventDetails = ({ eventId, onBack }) => {
                 <th>Actions</th>
               </tr>
             </thead>
+            
+// frontend/src/pages/EventDetails.js - UPDATED TBODY SECTION
             <tbody>
               {assignments.map(a => (
                 <tr
@@ -716,64 +718,76 @@ const EventDetails = ({ eventId, onBack }) => {
                   <td>{a.technician_name}</td>
 
                   {/* Date - inline editable */}
-                  <EditableCell
-                    value={a.assignment_date || ''}
-                    type="date"
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'assignment_date', value)
-                    }
-                    displayValue={a.assignment_date || '—'}
-                  />
+                  <td>
+                    <EditableCell
+                      value={a.assignment_date || ''}
+                      type="date"
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'assignment_date', value)
+                      }
+                      displayValue={a.assignment_date || '—'}
+                    />
+                  </td>
 
                   {/* Start Time - inline editable */}
-                  <EditableCell
-                    value={a.start_time || ''}
-                    type="time"
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'start_time', value)
-                    }
-                    displayValue={a.start_time || '—'}
-                  />
+                  <td>
+                    <EditableCell
+                      value={a.start_time || ''}
+                      type="time"
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'start_time', value)
+                      }
+                      displayValue={a.start_time || '—'}
+                    />
+                  </td>
 
                   {/* End Time - inline editable */}
-                  <EditableCell
-                    value={a.end_time || ''}
-                    type="time"
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'end_time', value)
-                    }
-                    displayValue={a.end_time || '—'}
-                  />
+                  <td>
+                    <EditableCell
+                      value={a.end_time || ''}
+                      type="time"
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'end_time', value)
+                      }
+                      displayValue={a.end_time || '—'}
+                    />
+                  </td>
 
                   {/* Position - inline editable */}
-                  <EditableCell
-                    value={a.position || ''}
-                    type="text"
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'position', value)
-                    }
-                    displayValue={a.position || '—'}
-                  />
+                  <td>
+                    <EditableCell
+                      value={a.position || ''}
+                      type="text"
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'position', value)
+                      }
+                      displayValue={a.position || '—'}
+                    />
+                  </td>
 
                   {/* Hours Worked - inline editable */}
-                  <EditableCell
-                    value={a.hours_worked || ''}
-                    type="number"
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'hours_worked', value)
-                    }
-                    displayValue={a.hours_worked || '—'}
-                  />
+                  <td>
+                    <EditableCell
+                      value={a.hours_worked || ''}
+                      type="number"
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'hours_worked', value)
+                      }
+                      displayValue={a.hours_worked || '—'}
+                    />
+                  </td>
 
                   {/* Rate Type - inline editable select */}
-                  <EditableSelectCell
-                    value={a.rate_type || 'hourly'}
-                    options={RATE_TYPES}
-                    onSave={value =>
-                      handleInlineEditSave(a.id, 'rate_type', value)
-                    }
-                    displayValue={a.rate_type || '—'}
-                  />
+                  <td>
+                    <EditableSelectCell
+                      value={a.rate_type || 'hourly'}
+                      options={RATE_TYPES}
+                      onSave={value =>
+                        handleInlineEditSave(a.id, 'rate_type', value)
+                      }
+                      displayValue={a.rate_type || '—'}
+                    />
+                  </td>
 
                   <td>${(a.calculated_pay || 0).toFixed(2)}</td>
                   <td>${(a.customer_bill || 0).toFixed(2)}</td>
