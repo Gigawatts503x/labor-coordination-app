@@ -3,6 +3,8 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { query, run } from '../config/database.js';
 
+
+
 const router = express.Router();
 
 /**
@@ -191,6 +193,68 @@ router.delete('/assignments/:id', async (req, res, next) => {
     await run('DELETE FROM event_assignments WHERE id = ?', [id]);
 
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/events/:eventId/assignments/bulk-update
+ * Update multiple assignments at once
+ */
+router.patch('/events/:eventId/assignments/bulk-update', async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const { assignmentIds, updates } = req.body;
+
+    if (!assignmentIds || !Array.isArray(assignmentIds) || assignmentIds.length === 0) {
+      return res.status(400).json({ error: 'Invalid assignmentIds' });
+    }
+
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'Invalid updates object' });
+    }
+
+    // Build dynamic SET clause
+    const allowedFields = ['assignment_date', 'start_time', 'end_time', 'position'];
+    const setClause = Object.keys(updates)
+      .filter(key => allowedFields.includes(key))
+      .map(key => `${key} = ?`)
+      .join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = Object.keys(updates)
+      .filter(key => allowedFields.includes(key))
+      .map(key => updates[key]);
+
+    // Add eventId and assignmentIds to query
+    values.push(eventId);
+    const placeholders = assignmentIds.map(() => '?').join(', ');
+    values.push(...assignmentIds);
+
+    const sql = `
+      UPDATE event_assignments
+      SET ${setClause}
+      WHERE event_id = ? AND id IN (${placeholders})
+    `;
+
+    await query(sql, values);
+
+    // Return updated assignments
+    const updatedAssignments = await query(
+      `
+      SELECT ea.*, t.name as technician_name
+      FROM event_assignments ea
+      JOIN technicians t ON t.id = ea.technician_id
+      WHERE ea.event_id = ? AND ea.id IN (${placeholders})
+      `,
+      [eventId, ...assignmentIds]
+    );
+
+    res.json(updatedAssignments);
   } catch (err) {
     next(err);
   }

@@ -40,3 +40,9 @@ export const deleteRequirement = (id) => api.delete(`/requirements/${id}`);
 
 export const getEventRequirementsWithCoverage = (eventId) =>
   api.get(`/events/${eventId}/requirements/with-coverage`);
+
+export const bulkUpdateAssignments = (eventId, assignmentIds, updates) =>
+  api.patch(`/events/${eventId}/assignments/bulk-update`, { assignmentIds, updates });
+
+
+

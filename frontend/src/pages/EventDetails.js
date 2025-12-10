@@ -1,6 +1,6 @@
 // frontend/src/pages/EventDetails.js
 import React, { useEffect, useState } from 'react';
-import { getEvent, getTechnicians } from '../utils/api';
+import { getEvent, getTechnicians, bulkUpdateAssignments } from '../utils/api';
 import { useAssignments } from '../hooks/useAssignments';
 import '../styles/EventDetails.css';
 import {
@@ -9,10 +9,8 @@ import {
   deleteRequirement
 } from '../utils/api';
 
-
-
-
 const RATE_TYPES = ['hourly', 'half-day', 'full-day'];
+const BULK_EDIT_FIELDS = ['assignment_date', 'start_time', 'end_time', 'position'];
 
 const EventDetails = ({ eventId, onBack }) => {
   const [event, setEvent] = useState(null);
@@ -24,9 +22,9 @@ const EventDetails = ({ eventId, onBack }) => {
     assignments,
     loading: loadingAssignments,
     addAssignment,
-    removeAssignment
+    removeAssignment,
+    refreshAssignments
   } = useAssignments(eventId);
-
 
   const [formData, setFormData] = useState({
     technician_id: '',
@@ -39,7 +37,93 @@ const EventDetails = ({ eventId, onBack }) => {
     requirement_id: ''
   });
 
+  // Bulk edit state
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState([]);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [bulkEditModal, setBulkEditModal] = useState(null);
+  const [bulkEditValues, setBulkEditValues] = useState({
+    assignment_date: '',
+    start_time: '',
+    end_time: '',
+    position: ''
+  });
 
+  const [requirements, setRequirements] = useState([]);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
+  const [reqError, setReqError] = useState(null);
+
+  const [reqForm, setReqForm] = useState({
+    requirement_date: '',
+    room_or_location: '',
+    set_time: '',
+    start_time: '',
+    end_time: '',
+    strike_time: '',
+    position: '',
+    techs_needed: 1
+  });
+
+  // Load event, technicians, requirements
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingEvent(true);
+        setLoadingRequirements(true);
+        const [eventRes, techRes, reqRes] = await Promise.all([
+          getEvent(eventId),
+          getTechnicians(),
+          getEventRequirementsWithCoverage(eventId)
+        ]);
+        setEvent(eventRes.data);
+        setTechnicians(techRes.data);
+        setRequirements(reqRes.data);
+        setError(null);
+        setReqError(null);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoadingEvent(false);
+        setLoadingRequirements(false);
+      }
+    };
+    if (eventId) load();
+  }, [eventId]);
+
+  // Close context menu on click
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  // Form handlers
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'hours_worked' ? (value === '' ? '' : parseFloat(value) || '') : value
+    }));
+  };
+
+  const handleReqFormChange = (e) => {
+    const { name, value } = e.target;
+    setReqForm(prev => ({
+      ...prev,
+      [name]: name === 'techs_needed'
+        ? (value === '' ? '' : parseInt(value, 10) || 1)
+        : value
+    }));
+  };
+
+  const handleBulkEditValueChange = (e) => {
+    const { name, value } = e.target;
+    setBulkEditValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Assignment handlers
   const handleAddAssignment = async (e) => {
     e.preventDefault();
     if (!formData.technician_id || !formData.rate_type) return;
@@ -77,46 +161,6 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
-
-
-  const [requirements, setRequirements] = useState([]);
-  const [loadingRequirements, setLoadingRequirements] = useState(false);
-  const [reqError, setReqError] = useState(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoadingEvent(true);
-        setLoadingRequirements(true);
-        const [eventRes, techRes, reqRes] = await Promise.all([
-          getEvent(eventId),
-          getTechnicians(),
-          getEventRequirementsWithCoverage(eventId)
-        ]);
-        setEvent(eventRes.data);
-        setTechnicians(techRes.data);
-        setRequirements(reqRes.data);
-        setError(null);
-        setReqError(null);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoadingEvent(false);
-        setLoadingRequirements(false);
-      }
-    };
-    if (eventId) load();
-  }, [eventId]);
-
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'hours_worked' ? (value === '' ? '' : parseFloat(value) || '') : value
-    }));
-  };
-
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this assignment?')) return;
     try {
@@ -126,68 +170,126 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
-  const [reqForm, setReqForm] = useState({
-  requirement_date: '',
-  room_or_location: '',
-  set_time: '',
-  start_time: '',
-  end_time: '',
-  strike_time: '',
-  position: '',
-  techs_needed: 1
-});
+  // Bulk edit handlers
+  const toggleAssignmentSelect = (assignmentId) => {
+    setSelectedAssignmentIds(prev =>
+      prev.includes(assignmentId)
+        ? prev.filter(id => id !== assignmentId)
+        : [...prev, assignmentId]
+    );
+  };
 
-const handleReqFormChange = (e) => {
-  const { name, value } = e.target;
-  setReqForm(prev => ({
-    ...prev,
-    [name]: name === 'techs_needed'
-      ? (value === '' ? '' : parseInt(value, 10) || 1)
-      : value
-  }));
-};
+  const toggleSelectAll = () => {
+    if (selectedAssignmentIds.length === assignments.length) {
+      setSelectedAssignmentIds([]);
+    } else {
+      setSelectedAssignmentIds(assignments.map(a => a.id));
+    }
+  };
 
-const handleAddRequirement = async (e) => {
-  e.preventDefault();
-  if (!reqForm.requirement_date || !reqForm.room_or_location || !reqForm.start_time || !reqForm.end_time) return;
+  const handleContextMenu = (e, assignmentId) => {
+    e.preventDefault();
 
-  try {
-    const res = await createEventRequirement(eventId, {
-      requirement_date: reqForm.requirement_date,
-      room_or_location: reqForm.room_or_location,
-      set_time: reqForm.set_time,
-      start_time: reqForm.start_time,
-      end_time: reqForm.end_time,
-      strike_time: reqForm.strike_time,
-      position: reqForm.position || null,
-      techs_needed: reqForm.techs_needed || 1
+    if (!selectedAssignmentIds.includes(assignmentId)) {
+      setSelectedAssignmentIds([assignmentId]);
+    }
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      assignmentIds: selectedAssignmentIds.includes(assignmentId)
+        ? selectedAssignmentIds
+        : [assignmentId]
     });
-    setRequirements([...requirements, res.data]);
-    setReqForm({
-      requirement_date: '',
-      room_or_location: '',
-      set_time: '',
-      start_time: '',
-      end_time: '',
-      strike_time: '',
-      position: '',
-      techs_needed: 1
+  };
+
+  const openBulkEditModal = () => {
+    if (contextMenu?.assignmentIds?.length) {
+      setBulkEditModal({ assignmentIds: contextMenu.assignmentIds });
+      setBulkEditValues({
+        assignment_date: '',
+        start_time: '',
+        end_time: '',
+        position: ''
+      });
+      setContextMenu(null);
+    }
+  };
+
+  const handleBulkEditSubmit = async () => {
+    if (!bulkEditModal?.assignmentIds?.length) return;
+
+    // Build updates object with only non-empty values
+    const updates = {};
+    BULK_EDIT_FIELDS.forEach(field => {
+      if (bulkEditValues[field] !== '') {
+        updates[field] = bulkEditValues[field];
+      }
     });
-  } catch (err) {
-    setReqError(err.message);
-  }
-};
 
+    if (Object.keys(updates).length === 0) {
+      alert('Please enter at least one value to update');
+      return;
+    }
 
-const handleDeleteRequirement = async (id) => {
-  if (!window.confirm('Delete this requirement?')) return;
-  try {
-    await deleteRequirement(id);
-    setRequirements(requirements.filter(r => r.id !== id));
-  } catch (err) {
-    setReqError(err.message);
-  }
-};
+    // Confirm before applying
+    const count = bulkEditModal.assignmentIds.length;
+    if (!window.confirm(`Apply these changes to ${count} assignment(s)?`)) {
+      return;
+    }
+
+    try {
+      await bulkUpdateAssignments(eventId, bulkEditModal.assignmentIds, updates);
+      await refreshAssignments();
+      setBulkEditModal(null);
+      setSelectedAssignmentIds([]);
+    } catch (err) {
+      console.error('Bulk update failed:', err);
+      alert('Failed to update assignments');
+    }
+  };
+
+  // Requirement handlers
+  const handleAddRequirement = async (e) => {
+    e.preventDefault();
+    if (!reqForm.requirement_date || !reqForm.room_or_location || !reqForm.start_time || !reqForm.end_time) return;
+
+    try {
+      const res = await createEventRequirement(eventId, {
+        requirement_date: reqForm.requirement_date,
+        room_or_location: reqForm.room_or_location,
+        set_time: reqForm.set_time,
+        start_time: reqForm.start_time,
+        end_time: reqForm.end_time,
+        strike_time: reqForm.strike_time,
+        position: reqForm.position || null,
+        techs_needed: reqForm.techs_needed || 1
+      });
+      setRequirements([...requirements, res.data]);
+      setReqForm({
+        requirement_date: '',
+        room_or_location: '',
+        set_time: '',
+        start_time: '',
+        end_time: '',
+        strike_time: '',
+        position: '',
+        techs_needed: 1
+      });
+    } catch (err) {
+      setReqError(err.message);
+    }
+  };
+
+  const handleDeleteRequirement = async (id) => {
+    if (!window.confirm('Delete this requirement?')) return;
+    try {
+      await deleteRequirement(id);
+      setRequirements(requirements.filter(r => r.id !== id));
+    } catch (err) {
+      setReqError(err.message);
+    }
+  };
 
   const totalPay = assignments.reduce((sum, a) => sum + (a.calculated_pay || 0), 0);
   const totalBill = assignments.reduce((sum, a) => sum + (a.customer_bill || 0), 0);
@@ -216,6 +318,7 @@ const handleDeleteRequirement = async (id) => {
           <p><strong>Customer Bill:</strong> ${totalBill.toFixed(2)}</p>
         </div>
       </header>
+
       <section className="requirements-section">
         <h2>Requirements (Rooms / Slots)</h2>
 
@@ -243,15 +346,15 @@ const handleDeleteRequirement = async (id) => {
                 required
               />
             </div>
-              <div className="form-group">
-                <label>Set</label>
-                <input
-                  type="time"
-                  name="set_time"
-                  value={reqForm.set_time}
-                  onChange={handleReqFormChange}
-                />
-              </div>
+            <div className="form-group">
+              <label>Set</label>
+              <input
+                type="time"
+                name="set_time"
+                value={reqForm.set_time}
+                onChange={handleReqFormChange}
+              />
+            </div>
             <div className="form-group">
               <label>Start Time *</label>
               <input
@@ -272,15 +375,15 @@ const handleDeleteRequirement = async (id) => {
                 required
               />
             </div>
-              <div className="form-group">
-                <label>Strike</label>
-                <input
-                  type="time"
-                  name="strike_time"
-                  value={reqForm.strike_time}
-                  onChange={handleReqFormChange}
-                />
-              </div>
+            <div className="form-group">
+              <label>Strike</label>
+              <input
+                type="time"
+                name="strike_time"
+                value={reqForm.strike_time}
+                onChange={handleReqFormChange}
+              />
+            </div>
             <div className="form-group">
               <label>Position</label>
               <input
@@ -307,6 +410,7 @@ const handleDeleteRequirement = async (id) => {
             + Add Requirement
           </button>
         </form>
+
         {loadingRequirements ? (
           <p>Loading requirements...</p>
         ) : requirements.length === 0 ? (
@@ -334,7 +438,7 @@ const handleDeleteRequirement = async (id) => {
                     ? r.assigned_techs.map(t => t.name).join(', ')
                     : '';
                   const coverageStatus = `${r.assigned_count || 0}/${r.techs_needed}`;
-                  
+
                   return (
                     <tr key={r.id}>
                       <td>{r.requirement_date || '—'}</td>
@@ -366,7 +470,10 @@ const handleDeleteRequirement = async (id) => {
           </div>
         )}
       </section>
-      <section>
+
+      <section className="assignments-section">
+        <h2>Assignments</h2>
+
         <form className="assignment-form" onSubmit={handleAddAssignment}>
           <div className="form-row">
             <div className="form-group">
@@ -439,6 +546,7 @@ const handleDeleteRequirement = async (id) => {
               </select>
             </div>
           </div>
+
           <div className="form-row">
             <div className="form-group">
               <label>Date</label>
@@ -472,6 +580,7 @@ const handleDeleteRequirement = async (id) => {
             + Add Assignment
           </button>
         </form>
+
         {loadingAssignments ? (
           <p>Loading assignments…</p>
         ) : assignments.length === 0 ? (
@@ -481,6 +590,13 @@ const handleDeleteRequirement = async (id) => {
             <table className="assignments-table">
               <thead>
                 <tr>
+                  <th style={{ width: '30px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedAssignmentIds.length === assignments.length && assignments.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>Technician</th>
                   <th>Date</th>
                   <th>Start</th>
@@ -495,7 +611,21 @@ const handleDeleteRequirement = async (id) => {
               </thead>
               <tbody>
                 {assignments.map(a => (
-                  <tr key={a.id}>
+                  <tr
+                    key={a.id}
+                    onContextMenu={(e) => handleContextMenu(e, a.id)}
+                    style={{
+                      backgroundColor: selectedAssignmentIds.includes(a.id) ? '#e8f4f8' : 'transparent',
+                      cursor: 'context-menu'
+                    }}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedAssignmentIds.includes(a.id)}
+                        onChange={() => toggleAssignmentSelect(a.id)}
+                      />
+                    </td>
                     <td>{a.technician_name}</td>
                     <td>{a.assignment_date || '—'}</td>
                     <td>{a.start_time || '—'}</td>
@@ -517,6 +647,135 @@ const handleDeleteRequirement = async (id) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <div
+            style={{
+              position: 'fixed',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              backgroundColor: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              minWidth: '150px'
+            }}
+          >
+            <button
+              onClick={openBulkEditModal}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontSize: '14px'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              ✏️ Bulk Edit ({contextMenu.assignmentIds.length})
+            </button>
+          </div>
+        )}
+
+        {/* Bulk Edit Modal */}
+        {bulkEditModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 2000
+            }}
+            onClick={() => setBulkEditModal(null)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                padding: '20px',
+                minWidth: '400px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>Bulk Edit Assignments ({bulkEditModal.assignmentIds.length} selected)</h3>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Date</label>
+                <input
+                  type="date"
+                  name="assignment_date"
+                  value={bulkEditValues.assignment_date}
+                  onChange={handleBulkEditValueChange}
+                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Start Time</label>
+                <input
+                  type="time"
+                  name="start_time"
+                  value={bulkEditValues.start_time}
+                  onChange={handleBulkEditValueChange}
+                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>End Time</label>
+                <input
+                  type="time"
+                  name="end_time"
+                  value={bulkEditValues.end_time}
+                  onChange={handleBulkEditValueChange}
+                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Position</label>
+                <input
+                  type="text"
+                  name="position"
+                  value={bulkEditValues.position}
+                  onChange={handleBulkEditValueChange}
+                  placeholder="Leave blank to keep unchanged"
+                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setBulkEditModal(null)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkEditSubmit}
+                  className="btn btn-success"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Apply Changes
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </section>
