@@ -12,38 +12,37 @@ export const useAssignments = (eventId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchAssignments = async () => {
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      if (!eventId) return;
+      try {
+        setLoading(true);
+        const response = await getEventAssignments(eventId);
+        setAssignments(response.data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, [eventId]);
+
+  const refreshAssignments = async () => {
     if (!eventId) return;
     try {
-      setLoading(true);
       const response = await getEventAssignments(eventId);
       setAssignments(response.data);
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchAssignments();
-  }, [eventId]);
 
   const addAssignment = async (data) => {
     try {
       const response = await createEventAssignment(eventId, data);
       setAssignments([...assignments, response.data]);
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const updateOne = async (id, data) => {
-    try {
-      const response = await updateAssignment(id, data);
-      setAssignments(assignments.map(a => a.id === id ? response.data : a));
       return response.data;
     } catch (err) {
       setError(err.message);
@@ -61,5 +60,5 @@ export const useAssignments = (eventId) => {
     }
   };
 
-  return { assignments, loading, error, addAssignment, updateOne, removeAssignment, refetch: fetchAssignments };
+  return { assignments, loading, error, addAssignment, removeAssignment, refreshAssignments };
 };
