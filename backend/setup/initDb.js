@@ -22,6 +22,9 @@ const CREATE_TABLES_SQL = {
       po_number TEXT,
       start_date TEXT,
       end_date TEXT,
+      total_tech_payout REAL DEFAULT 0,     
+      total_labor_cost REAL DEFAULT 0,          
+      total_customer_billing REAL DEFAULT 0,     
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
