@@ -38,6 +38,7 @@ export const createEventRequirement = (eventId, data) =>
 export const updateRequirement = (id, data) => api.put(`/requirements/${id}`, data);
 export const deleteRequirement = (id) => api.delete(`/requirements/${id}`);
 
+
 export const getEventRequirementsWithCoverage = (eventId) =>
   api.get(`/events/${eventId}/requirements/with-coverage`);
 

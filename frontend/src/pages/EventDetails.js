@@ -1,6 +1,6 @@
 // frontend/src/pages/EventDetails.js
 import React, { useEffect, useState } from 'react';
-import { getEvent, getTechnicians, bulkUpdateAssignments } from '../utils/api';
+import { getEvent, getTechnicians, bulkUpdateAssignments, deleteEvent } from '../utils/api';
 import { useAssignments } from '../hooks/useAssignments';
 import '../styles/EventDetails.css';
 import {
@@ -301,24 +301,25 @@ const EventDetails = ({ eventId, onBack }) => {
   const handleAddRequirement = async (e) => {
     e.preventDefault();
     if (
-      !reqForm.requirement_date ||
-      !reqForm.room_or_location ||
-      !reqForm.start_time ||
-      !reqForm.end_time
+      !reqForm.requirementdate ||
+      !reqForm.roomorlocation ||
+      !reqForm.starttime ||
+      !reqForm.endtime
     )
       return;
 
     try {
       const res = await createEventRequirement(eventId, {
-        requirement_date: reqForm.requirement_date,
-        room_or_location: reqForm.room_or_location,
-        set_time: reqForm.set_time,
-        start_time: reqForm.start_time,
-        end_time: reqForm.end_time,
-        strike_time: reqForm.strike_time,
+        requirement_date: reqForm.requirementdate,
+        room_or_location: reqForm.roomorlocation,
+        set_time: reqForm.settime,
+        start_time: reqForm.starttime,
+        end_time: reqForm.endtime,
+        strike_time: reqForm.striketime,
         position: reqForm.position || null,
-        techs_needed: reqForm.techs_needed || 1
+        techs_needed: reqForm.techsneeded || 1
       });
+
       setRequirements([...requirements, res.data]);
       setReqForm({
         requirement_date: '',
@@ -332,6 +333,20 @@ const EventDetails = ({ eventId, onBack }) => {
       });
     } catch (err) {
       setReqError(err.message);
+    }
+  };
+
+    const handleDeleteEvent = async () => {
+    if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await deleteEvent(eventId);
+      alert('Event deleted successfully');
+      onBack(); // Go back to events list
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      alert(`Failed to delete event: ${err.message}`);
     }
   };
 
@@ -353,12 +368,18 @@ const EventDetails = ({ eventId, onBack }) => {
   if (!event) return <div>Event not found</div>;
 
   return (
-    <div className="event-details">
-      <button onClick={onBack} className="btn btn-back">
-        ← Back
-      </button>
+<>
+  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+    <button onClick={onBack} className="btn btn-back">
+      ← Back
+    </button>
+    <button onClick={handleDeleteEvent} className="btn btn-delete">
+      🗑️ Delete Event
+    </button>
+  </div>
 
-      <div className="event-header">
+  <div className="event-header">
+
         <h1>{event.name}</h1>
         <p className="client-name">{event.client_name}</p>
       </div>
@@ -772,8 +793,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 <th>Actions</th>
               </tr>
             </thead>
-            
-// frontend/src/pages/EventDetails.js - UPDATED TBODY SECTION
+
             <tbody>
               {assignments.map(a => (
                 <tr
@@ -891,9 +911,10 @@ const EventDetails = ({ eventId, onBack }) => {
             <strong>Total Customer Bill:</strong> ${totalBill.toFixed(2)}
           </p>
         </div>
-      </div>
-    </div>
-  );
+        </div>
+  </>
+);
 };
+
 
 export default EventDetails;

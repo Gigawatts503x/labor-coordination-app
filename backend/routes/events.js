@@ -63,11 +63,17 @@ router.put('/events/:id', async (req, res, next) => {
 router.delete('/events/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    // Delete in correct order to avoid foreign key conflicts
+    await run('DELETE FROM event_assignments WHERE event_id = ?', [id]);
+    await run('DELETE FROM event_requirements WHERE event_id = ?', [id]);
+    await run('DELETE FROM rate_configs WHERE event_id = ?', [id]);
+    await run('DELETE FROM invoices WHERE event_id = ?', [id]);
     await run('DELETE FROM events WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
     next(err);
   }
 });
+
 
 export default router;
