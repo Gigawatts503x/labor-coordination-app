@@ -1,27 +1,35 @@
-// frontend/src/pages/EventDetails.js
 import React, { useEffect, useState } from 'react';
-import { getEvent, getTechnicians, bulkUpdateAssignments, deleteEvent } from '../utils/api';
-import { useAssignments } from '../hooks/useAssignments';
-import '../styles/EventDetails.css';
-import {
+import { 
+  getEvent, 
+  getTechnicians, 
+  bulkUpdateAssignments, 
+  deleteEvent, 
+  api,
   getEventRequirementsWithCoverage,
   createEventRequirement,
-  deleteRequirement
+  deleteRequirement,
+  updateAssignment
 } from '../utils/api';
+import { useAssignments } from '../hooks/useAssignments';
 import EditableCell from '../components/EditableCell';
 import EditableSelectCell from '../components/EditableSelectCell';
-import { updateAssignment } from '../utils/api';
+import '../styles/EventDetails.css';
 
 const RATETYPE = ['hourly', 'half-day', 'full-day'];
 const BULK_EDIT_FIELDS = ['assignment_date', 'start_time', 'end_time', 'position'];
 
 const EventDetails = ({ eventId, onBack }) => {
+  // ==========================================
+  // STATE - Event & Technicians
+  // ==========================================
   const [event, setEvent] = useState(null);
   const [technicians, setTechnicians] = useState([]);
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ FIX: Get assignments from the hook FIRST (line 26-29)
+  // ==========================================
+  // STATE - Assignments (from hook)
+  // ==========================================
   const {
     assignments,
     loading: loadingAssignments,
@@ -30,44 +38,40 @@ const EventDetails = ({ eventId, onBack }) => {
     refreshAssignments
   } = useAssignments(eventId);
 
-  // ✅ FIX: Define handleInlineEditSave AFTER hook that provides assignments (was line 26, now line 31-51)
-  const handleInlineEditSave = async (assignmentId, field, value) => {
-    try {
-      console.log(`💾 Saving ${field}:`, value, 'for assignment:', assignmentId);
+  // ==========================================
+  // STATE - Requirements
+  // ==========================================
+  const [requirements, setRequirements] = useState([]);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
+  const [reqError, setReqError] = useState(null);
+  const [reqForm, setReqForm] = useState({
+    requirementdate: '',
+    roomorlocation: '',
+    settime: '',
+    starttime: '',
+    endtime: '',
+    striketime: '',
+    position: '',
+    techsneeded: 1
+  });
 
-      const assignment = assignments.find(a => a.id === assignmentId);
-      if (assignment && assignment[field] === value) {
-        console.log('No change detected, skipping update');
-        return;
-      }
-
-      const response = await updateAssignment(assignmentId, {
-        [field]: value || null
-      });
-
-      console.log('✅ Update successful:', response);
-
-      // Refresh assignments after inline edit
-      await refreshAssignments();
-    } catch (err) {
-      console.error('❌ Error saving assignment:', err);
-      alert(`Failed to save ${field}: ${err.message}`);
-    }
-  };
-
+  // ==========================================
+  // STATE - Assignment Form
+  // ==========================================
   const [formData, setFormData] = useState({
-  technicianid: '',
-  position: '',
-  hoursworked: '',
-  ratetype: 'hourly',
-  assignmentdate: '',
-  starttime: '',
-  endtime: '',
-  requirementid: ''
-});
+    technicianid: '',
+    position: '',
+    hoursworked: '',
+    ratetype: 'hourly',
+    assignmentdate: '',
+    starttime: '',
+    endtime: '',
+    requirementid: ''
+  });
 
-
-  // Bulk edit state
+  // ==========================================
+  // STATE - Bulk Edit & Modals
+  // ==========================================
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [bulkEditModal, setBulkEditModal] = useState(null);
@@ -77,36 +81,37 @@ const EventDetails = ({ eventId, onBack }) => {
     end_time: '',
     position: ''
   });
+  const [settingsModal, setSettingsModal] = useState(false);
+  const [settings, setSettings] = useState({
+    halfday_hours: 5,
+    fullday_hours: 10,
+    ot_threshold: 10,
+    dot_threshold: 20,
+    dot_start_hour: 20,
+    tech_base_rate: 50,
+    customer_base_rate: 75
+  });
 
-  const [requirements, setRequirements] = useState([]);
-  const [loadingRequirements, setLoadingRequirements] = useState(false);
-  const [reqError, setReqError] = useState(null);
-  const [reqForm, setReqForm] = useState({
-  requirementdate: '',
-  roomorlocation: '',
-  settime: '',
-  starttime: '',
-  endtime: '',
-  striketime: '',
-  position: '',
-  techsneeded: 1
-});
-
-
-  // Load event, technicians, requirements
+  // ==========================================
+  // EFFECTS
+  // ==========================================
   useEffect(() => {
     const load = async () => {
       try {
         setLoadingEvent(true);
         setLoadingRequirements(true);
-        const [eventRes, techRes, reqRes] = await Promise.all([
+        const [eventRes, techRes, reqRes, settingsRes] = await Promise.all([
           getEvent(eventId),
           getTechnicians(),
-          getEventRequirementsWithCoverage(eventId)
+          getEventRequirementsWithCoverage(eventId),
+          api.get('/settings').catch(() => null)
         ]);
         setEvent(eventRes.data);
         setTechnicians(techRes.data);
         setRequirements(reqRes.data);
+        if (settingsRes) {
+          setSettings(settingsRes.data);
+        }
         setError(null);
         setReqError(null);
       } catch (err) {
@@ -119,20 +124,22 @@ const EventDetails = ({ eventId, onBack }) => {
     if (eventId) load();
   }, [eventId]);
 
-  // Close context menu on click
+  // Close context menu on click outside
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // Form handlers
+  // ==========================================
+  // HANDLERS - Form Changes
+  // ==========================================
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]:
-        name === 'hours_worked'
+        name === 'hoursworked'
           ? value === ''
             ? ''
             : parseFloat(value) || ''
@@ -145,7 +152,7 @@ const EventDetails = ({ eventId, onBack }) => {
     setReqForm(prev => ({
       ...prev,
       [name]:
-        name === 'techs_needed'
+        name === 'techsneeded'
           ? value === ''
             ? ''
             : parseInt(value, 10) || 1
@@ -161,71 +168,92 @@ const EventDetails = ({ eventId, onBack }) => {
     }));
   };
 
-///////////////////////
-const handleAddAssignment = async (e) => {
-  e.preventDefault();
-  if (!formData.technicianid || !formData.ratetype) return;
+  // ==========================================
+  // HANDLERS - Inline Editing
+  // ==========================================
+  const handleInlineEditSave = async (assignmentId, field, value) => {
+    try {
+      console.log(`💾 Saving ${field}:`, value, 'for assignment:', assignmentId);
 
-  // Check for scheduling conflicts
-  const selectedTech = formData.technicianid;
-  const assignmentDate = formData.assignmentdate;
-  const startTime = formData.starttime;
-  const endTime = formData.endtime;
-
-  if (assignmentDate && startTime && endTime) {
-    const conflict = assignments.some(a => {
-      if (a.technician_id !== selectedTech || a.assignment_date !== assignmentDate) {
-        return false;
+      const assignment = assignments.find(a => a.id === assignmentId);
+      if (assignment && assignment[field] === value) {
+        console.log('No change detected, skipping update');
+        return;
       }
-      // Check for time overlap
-      const existingStart = a.start_time;
-      const existingEnd = a.end_time;
-      return (startTime < existingEnd && endTime > existingStart);
-    });
 
-    if (conflict) {
-      alert(`❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`);
-      return;
+      await updateAssignment(assignmentId, {
+        [field]: value || null
+      });
+
+      console.log('✅ Update successful');
+      await refreshAssignments();
+    } catch (err) {
+      console.error('❌ Error saving assignment:', err);
+      alert(`Failed to save ${field}: ${err.message}`);
     }
-  }
-
-
-  const hours = parseFloat(formData.hoursworked || 0);
-  const tech = technicians.find(t => t.id === formData.technicianid);
-
-  const data = {
-    technician_id: formData.technicianid,
-    position: formData.position || (tech ? tech.position : null),
-    hours_worked: hours,
-    rate_type: formData.ratetype,
-    calculated_pay: 0,
-    customer_bill: 0,
-    assignment_date: formData.assignmentdate || null,
-    start_time: formData.starttime || null,
-    end_time: formData.endtime || null,
-    requirement_id: formData.requirementid || null
   };
 
-  try {
-    await addAssignment(data);
-    setFormData({
-      technicianid: '',
-      position: '',
-      hoursworked: '',
-      ratetype: 'hourly',
-      assignmentdate: '',
-      starttime: '',
-      endtime: '',
-      requirementid: ''
-    });
-  } catch (err) {
-    console.error('Failed to add assignment', err);
-  }
-};
+  // ==========================================
+  // HANDLERS - Assignment Operations
+  // ==========================================
+  const handleAddAssignment = async (e) => {
+    e.preventDefault();
+    if (!formData.technicianid || !formData.ratetype) return;
 
+    // Check for scheduling conflicts
+    const selectedTech = formData.technicianid;
+    const assignmentDate = formData.assignmentdate;
+    const startTime = formData.starttime;
+    const endTime = formData.endtime;
 
+    if (assignmentDate && startTime && endTime) {
+      const conflict = assignments.some(a => {
+        if (a.technician_id !== selectedTech || a.assignment_date !== assignmentDate) {
+          return false;
+        }
+        const existingStart = a.start_time;
+        const existingEnd = a.end_time;
+        return (startTime < existingEnd && endTime > existingStart);
+      });
 
-///////////////////////
+      if (conflict) {
+        alert(`❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`);
+        return;
+      }
+    }
+
+    const hours = parseFloat(formData.hoursworked || 0);
+    const tech = technicians.find(t => t.id === formData.technicianid);
+
+    const data = {
+      technician_id: formData.technicianid,
+      position: formData.position || (tech ? tech.position : null),
+      hours_worked: hours,
+      rate_type: formData.ratetype,
+      calculated_pay: 0,
+      customer_bill: 0,
+      assignment_date: formData.assignmentdate || null,
+      start_time: formData.starttime || null,
+      end_time: formData.endtime || null,
+      requirement_id: formData.requirementid || null
+    };
+
+    try {
+      await addAssignment(data);
+      setFormData({
+        technicianid: '',
+        position: '',
+        hoursworked: '',
+        ratetype: 'hourly',
+        assignmentdate: '',
+        starttime: '',
+        endtime: '',
+        requirementid: ''
+      });
+    } catch (err) {
+      console.error('Failed to add assignment', err);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this assignment?')) return;
@@ -236,7 +264,23 @@ const handleAddAssignment = async (e) => {
     }
   };
 
-  // Bulk edit handlers
+  const handleDeleteEvent = async () => {
+    if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await deleteEvent(eventId);
+      alert('Event deleted successfully');
+      onBack();
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      alert(`Failed to delete event: ${err.message}`);
+    }
+  };
+
+  // ==========================================
+  // HANDLERS - Bulk Edit
+  // ==========================================
   const toggleAssignmentSelect = (assignmentId) => {
     setSelectedAssignmentIds(prev =>
       prev.includes(assignmentId)
@@ -285,7 +329,6 @@ const handleAddAssignment = async (e) => {
   const handleBulkEditSubmit = async () => {
     if (!bulkEditModal?.assignmentIds?.length) return;
 
-    // Build updates object with only non-empty values
     const updates = {};
     BULK_EDIT_FIELDS.forEach(field => {
       if (bulkEditValues[field] !== '') {
@@ -298,7 +341,6 @@ const handleAddAssignment = async (e) => {
       return;
     }
 
-    // Confirm before applying
     const count = bulkEditModal.assignmentIds.length;
     if (!window.confirm(`Apply these changes to ${count} assignment(s)?`)) {
       return;
@@ -310,12 +352,12 @@ const handleAddAssignment = async (e) => {
         assignmentIds: bulkEditModal.assignmentIds,
         updates
       });
-      const response = await bulkUpdateAssignments(
+      await bulkUpdateAssignments(
         eventId,
         bulkEditModal.assignmentIds,
         updates
       );
-      console.log('✅ BULK UPDATE SUCCESS:', response);
+      console.log('✅ BULK UPDATE SUCCESS');
       await refreshAssignments();
       setBulkEditModal(null);
       setSelectedAssignmentIds([]);
@@ -327,17 +369,19 @@ const handleAddAssignment = async (e) => {
     }
   };
 
+  // ==========================================
+  // HANDLERS - Requirements
+  // ==========================================
   const handleAddRequirement = async (e) => {
     e.preventDefault();
-    
+
     if (
-    !reqForm.requirementdate ||
-    !reqForm.roomorlocation ||
-    !reqForm.starttime ||
-    !reqForm.endtime
-  ) {
-    // Only show alert if truly empty
-    return;
+      !reqForm.requirementdate ||
+      !reqForm.roomorlocation ||
+      !reqForm.starttime ||
+      !reqForm.endtime
+    ) {
+      return;
     }
 
     try {
@@ -352,7 +396,6 @@ const handleAddAssignment = async (e) => {
         techs_needed: reqForm.techsneeded || 1
       });
       setRequirements([...requirements, res.data]);
-      // Keep date/time fields, only clear position and techs_needed
       setReqForm({
         requirementdate: reqForm.requirementdate,
         roomorlocation: reqForm.roomorlocation,
@@ -363,46 +406,23 @@ const handleAddAssignment = async (e) => {
         position: '',
         techsneeded: 1
       });
-
-
     } catch (err) {
       console.error('Error creating requirement:', err);
       setReqError(err.message);
     }
   };
 
-
-
-
-
-    const handleDeleteEvent = async () => {
-    if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
-      return;
-    }
-    try {
-      await deleteEvent(eventId);
-      alert('Event deleted successfully');
-      onBack(); // Go back to events list
-    } catch (err) {
-      console.error('Failed to delete event:', err);
-      alert(`Failed to delete event: ${err.message}`);
-    }
-  };
-
   const handleSelectRequirement = (requirement) => {
-    // Fill form with requirement details
     setFormData({
       technicianid: '',
       position: requirement.position || '',
       hoursworked: requirement.techs_needed || '',
       ratetype: 'full-day',
       assignmentdate: requirement.requirement_date || '',
-      starttime: requirement.start_time || '',
-      endtime: requirement.end_time || '',
+      starttime: requirement.set_time || '',
+      endtime: requirement.strike_time || '',
       requirementid: requirement.id
     });
-    
-    // Scroll to assignment form
     document.querySelector('.assignment-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -416,68 +436,85 @@ const handleAddAssignment = async (e) => {
     }
   };
 
+  // ==========================================
+  // CALCULATIONS
+  // ==========================================
   const totalPay = assignments.reduce((sum, a) => sum + (a.calculated_pay || 0), 0);
   const totalBill = assignments.reduce((sum, a) => sum + (a.customer_bill || 0), 0);
 
+  // ==========================================
+  // LOADING STATES
+  // ==========================================
   if (loadingEvent) return <div>Loading event...</div>;
   if (error) return <div className="error">Error: {error}</div>;
   if (!event) return <div>Event not found</div>;
 
+  // ==========================================
+  // RENDER
+  // ==========================================
   return (
-<>
-  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-    <button onClick={onBack} className="btn btn-back">
-      ← Back
-    </button>
-    <button onClick={handleDeleteEvent} className="btn btn-delete">
-      🗑️ Delete Event
-    </button>
-  </div>
+    <div className="event-details">
+      {/* Header with Back & Delete buttons */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <button onClick={onBack} className="btn btn-back">
+          ← Back
+        </button>
+        <button onClick={handleDeleteEvent} className="btn btn-delete">
+          🗑️ Delete Event
+        </button>
+      </div>
 
-  <div className="event-header">
-
+      {/* Event Info */}
+      <div className="event-header">
         <h1>{event.name}</h1>
         <p className="client-name">{event.client_name}</p>
+        <button
+          onClick={() => setSettingsModal(true)}
+          className="btn btn-secondary"
+          style={{ float: 'right', marginTop: '-40px' }}
+        >
+          ⚙️ Settings
+        </button>
       </div>
 
       {/* Requirements Section */}
       <div className="section">
         <h2>Requirements</h2>
-        
+
         <form onSubmit={handleAddRequirement} className="requirement-form">
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="requirementdate">Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 id="requirementdate"
-                name="requirementdate" 
-                value={reqForm.requirementdate} 
+                name="requirementdate"
+                value={reqForm.requirementdate}
                 onChange={handleReqFormChange}
-                required 
+                required
               />
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="roomorlocation">Room/Location</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 id="roomorlocation"
-                name="roomorlocation" 
-                value={reqForm.roomorlocation} 
+                name="roomorlocation"
+                value={reqForm.roomorlocation}
                 onChange={handleReqFormChange}
                 placeholder="e.g., Ballroom A"
-                required 
+                required
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="settime">Set Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="settime"
-                name="settime" 
-                value={reqForm.settime} 
+                name="settime"
+                value={reqForm.settime}
                 onChange={handleReqFormChange}
               />
             </div>
@@ -486,35 +523,35 @@ const handleAddAssignment = async (e) => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="starttime">Start Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="starttime"
-                name="starttime" 
-                value={reqForm.starttime} 
+                name="starttime"
+                value={reqForm.starttime}
                 onChange={handleReqFormChange}
-                required 
+                required
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="endtime">End Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="endtime"
-                name="endtime" 
-                value={reqForm.endtime} 
+                name="endtime"
+                value={reqForm.endtime}
                 onChange={handleReqFormChange}
-                required 
+                required
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="striketime">Strike Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="striketime"
-                name="striketime" 
-                value={reqForm.striketime} 
+                name="striketime"
+                value={reqForm.striketime}
                 onChange={handleReqFormChange}
               />
             </div>
@@ -523,11 +560,11 @@ const handleAddAssignment = async (e) => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="position">Position</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 id="position"
-                name="position" 
-                value={reqForm.position} 
+                name="position"
+                value={reqForm.position}
                 onChange={handleReqFormChange}
                 placeholder="e.g., A1, Cam Op"
               />
@@ -535,24 +572,23 @@ const handleAddAssignment = async (e) => {
 
             <div className="form-group">
               <label htmlFor="techsneeded">Techs Needed</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 id="techsneeded"
-                name="techsneeded" 
-                value={reqForm.techsneeded} 
+                name="techsneeded"
+                value={reqForm.techsneeded}
                 onChange={handleReqFormChange}
                 min="1"
               />
             </div>
 
             <div className="form-group">
-              <button type="submit" className="btn btn-success" style={{marginTop: '24px'}}>
+              <button type="submit" className="btn btn-success" style={{ marginTop: '24px' }}>
                 Add Requirement
               </button>
             </div>
           </div>
-        </form> 
-
+        </form>
 
         {loadingRequirements ? (
           <p>Loading requirements...</p>
@@ -586,16 +622,15 @@ const handleAddAssignment = async (e) => {
                       {assignedCount}/{neededCount}
                     </span>
                   );
-                const assignedNames = 
+                const assignedNames =
                   typeof r.assigned_techs === 'string'
                     ? r.assigned_techs
                     : Array.isArray(r.assigned_techs)
                     ? r.assigned_techs.map(t => t.name).join(', ')
                     : '—';
 
-
                 return (
-                  <tr 
+                  <tr
                     key={r.id}
                     onClick={() => handleSelectRequirement(r)}
                     style={{ cursor: 'pointer' }}
@@ -634,12 +669,12 @@ const handleAddAssignment = async (e) => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="technicianid">Technician</label>
-              <select 
+              <select
                 id="technicianid"
-                name="technicianid" 
-                value={formData.technicianid} 
+                name="technicianid"
+                value={formData.technicianid}
                 onChange={handleFormChange}
-                required 
+                required
               >
                 <option value="">-- Select Technician --</option>
                 {technicians.map(t => (
@@ -652,11 +687,11 @@ const handleAddAssignment = async (e) => {
 
             <div className="form-group">
               <label htmlFor="position">Position</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 id="position"
-                name="position" 
-                value={formData.position} 
+                name="position"
+                value={formData.position}
                 onChange={handleFormChange}
                 placeholder="Leave blank for tech's primary position"
               />
@@ -664,13 +699,13 @@ const handleAddAssignment = async (e) => {
 
             <div className="form-group">
               <label htmlFor="hoursworked">Hours / Days</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 id="hoursworked"
-                name="hoursworked" 
+                name="hoursworked"
                 step="0.25"
                 min="0"
-                value={formData.hoursworked} 
+                value={formData.hoursworked}
                 onChange={handleFormChange}
                 placeholder="0.00"
               />
@@ -679,11 +714,11 @@ const handleAddAssignment = async (e) => {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="RATETYPE">Rate Type</label>
-              <select 
-                id="RATETYPE"
-                name="RATETYPE" 
-                value={formData.RATETYPE} 
+              <label htmlFor="ratetype">Rate Type</label>
+              <select
+                id="ratetype"
+                name="ratetype"
+                value={formData.ratetype}
                 onChange={handleFormChange}
                 required
               >
@@ -697,22 +732,22 @@ const handleAddAssignment = async (e) => {
 
             <div className="form-group">
               <label htmlFor="assignmentdate">Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 id="assignmentdate"
-                name="assignmentdate" 
-                value={formData.assignmentdate} 
+                name="assignmentdate"
+                value={formData.assignmentdate}
                 onChange={handleFormChange}
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="starttime">Start Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="starttime"
-                name="starttime" 
-                value={formData.starttime} 
+                name="starttime"
+                value={formData.starttime}
                 onChange={handleFormChange}
               />
             </div>
@@ -721,40 +756,39 @@ const handleAddAssignment = async (e) => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="endtime">End Time</label>
-              <input 
-                type="time" 
+              <input
+                type="time"
                 id="endtime"
-                name="endtime" 
-                value={formData.endtime} 
+                name="endtime"
+                value={formData.endtime}
                 onChange={handleFormChange}
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="requirementid">Requirement (optional)</label>
-              <select 
+              <select
                 id="requirementid"
-                name="requirementid" 
-                value={formData.requirementid} 
+                name="requirementid"
+                value={formData.requirementid}
                 onChange={handleFormChange}
               >
                 <option value="">-- Requirement (optional) --</option>
                 {requirements.map(r => (
                   <option key={r.id} value={r.id}>
-                    {r.requirementdate} - {r.roomorlocation} ({r.position}) {r.techsneeded} needed
+                    {r.requirement_date} - {r.room_or_location} ({r.position}) {r.techs_needed} needed
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <button type="submit" className="btn btn-success" style={{marginTop: '24px'}}>
+              <button type="submit" className="btn btn-success" style={{ marginTop: '24px' }}>
                 Add Assignment
               </button>
             </div>
           </div>
         </form>
-
 
         {/* Context Menu */}
         {contextMenu && (
@@ -810,16 +844,10 @@ const handleAddAssignment = async (e) => {
                 </div>
               </div>
               <div className="modal-buttons">
-                <button
-                  onClick={handleBulkEditSubmit}
-                  className="btn btn-primary"
-                >
+                <button onClick={handleBulkEditSubmit} className="btn btn-primary">
                   Apply Changes
                 </button>
-                <button
-                  onClick={() => setBulkEditModal(null)}
-                  className="btn btn-secondary"
-                >
+                <button onClick={() => setBulkEditModal(null)} className="btn btn-secondary">
                   Cancel
                 </button>
               </div>
@@ -827,6 +855,7 @@ const handleAddAssignment = async (e) => {
           </div>
         )}
 
+        {/* Assignments Table */}
         {loadingAssignments ? (
           <p>Loading assignments…</p>
         ) : assignments.length === 0 ? (
@@ -879,7 +908,6 @@ const handleAddAssignment = async (e) => {
                   </td>
                   <td>{a.technician_name}</td>
 
-                  {/* Date - inline editable */}
                   <td>
                     <EditableCell
                       value={a.assignment_date || ''}
@@ -891,7 +919,6 @@ const handleAddAssignment = async (e) => {
                     />
                   </td>
 
-                  {/* Start Time - inline editable */}
                   <td>
                     <EditableCell
                       value={a.start_time || ''}
@@ -903,7 +930,6 @@ const handleAddAssignment = async (e) => {
                     />
                   </td>
 
-                  {/* End Time - inline editable */}
                   <td>
                     <EditableCell
                       value={a.end_time || ''}
@@ -915,7 +941,6 @@ const handleAddAssignment = async (e) => {
                     />
                   </td>
 
-                  {/* Position - inline editable */}
                   <td>
                     <EditableCell
                       value={a.position || ''}
@@ -927,7 +952,6 @@ const handleAddAssignment = async (e) => {
                     />
                   </td>
 
-                  {/* Hours Worked - inline editable */}
                   <td>
                     <EditableCell
                       value={a.hours_worked || ''}
@@ -939,15 +963,14 @@ const handleAddAssignment = async (e) => {
                     />
                   </td>
 
-                  {/* Rate Type - inline editable select */}
                   <td>
                     <EditableSelectCell
-                      value={a.RATETYPE || 'hourly'}
+                      value={a.rate_type || 'hourly'}
                       options={RATETYPE}
                       onSave={value =>
-                        handleInlineEditSave(a.id, 'RATETYPE', value)
+                        handleInlineEditSave(a.id, 'rate_type', value)
                       }
-                      displayValue={a.RATETYPE || '—'}
+                      displayValue={a.rate_type || '—'}
                     />
                   </td>
 
@@ -967,6 +990,7 @@ const handleAddAssignment = async (e) => {
           </table>
         )}
 
+        {/* Summary */}
         <div className="assignments-summary">
           <p>
             <strong>Total Tech Pay:</strong> ${totalPay.toFixed(2)}
@@ -975,10 +999,123 @@ const handleAddAssignment = async (e) => {
             <strong>Total Customer Bill:</strong> ${totalBill.toFixed(2)}
           </p>
         </div>
-        </div>
-  </>
-);
-};
+      </div>
 
+      {/* Settings Modal */}
+      {settingsModal && (
+        <div className="modal-overlay" onClick={() => setSettingsModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Company Settings</h3>
+            <div className="settings-form">
+              <div className="form-group">
+                <label>Half-Day Hours</label>
+                <input
+                  type="number"
+                  value={settings.halfday_hours}
+                  onChange={(e) =>
+                    setSettings({ ...settings, halfday_hours: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Full-Day Hours</label>
+                <input
+                  type="number"
+                  value={settings.fullday_hours}
+                  onChange={(e) =>
+                    setSettings({ ...settings, fullday_hours: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>OT Threshold (hours)</label>
+                <input
+                  type="number"
+                  value={settings.ot_threshold}
+                  onChange={(e) =>
+                    setSettings({ ...settings, ot_threshold: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>DOT Threshold (hours)</label>
+                <input
+                  type="number"
+                  value={settings.dot_threshold}
+                  onChange={(e) =>
+                    setSettings({ ...settings, dot_threshold: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>DOT Start Hour (24-hour format, e.g., 20 = 8pm)</label>
+                <input
+                  type="number"
+                  value={settings.dot_start_hour}
+                  min="0"
+                  max="23"
+                  onChange={(e) =>
+                    setSettings({ ...settings, dot_start_hour: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Default Tech Base Rate</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={settings.tech_base_rate}
+                  onChange={(e) =>
+                    setSettings({ ...settings, tech_base_rate: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Default Customer Base Rate</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={settings.customer_base_rate}
+                  onChange={(e) =>
+                    setSettings({ ...settings, customer_base_rate: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="modal-buttons">
+              <button
+                onClick={async () => {
+                  try {
+                    await api.put('/settings', settings);
+                    alert('✅ Settings saved!');
+                    setSettingsModal(false);
+                  } catch (err) {
+                    alert(`Failed to save: ${err.message}`);
+                  }
+                }}
+                className="btn btn-primary"
+              >
+                Save Settings
+              </button>
+              <button
+                onClick={() => setSettingsModal(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default EventDetails;

@@ -75,5 +75,42 @@ router.delete('/events/:id', async (req, res, next) => {
   }
 });
 
+// Settings routes
+router.get('/settings', async (req, res, next) => {
+  try {
+    const settings = await run('SELECT * FROM settings LIMIT 1');
+    res.json(settings || {
+      halfday_hours: 5,
+      fullday_hours: 10,
+      ot_threshold: 10,
+      dot_threshold: 20,
+      dot_start_hour: 20,
+      tech_base_rate: 50,
+      customer_base_rate: 75
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/settings', async (req, res, next) => {
+  try {
+    const { halfday_hours, fullday_hours, ot_threshold, dot_threshold, dot_start_hour, tech_base_rate, customer_base_rate } = req.body;
+    
+    // Update or insert settings
+    await run(`
+      INSERT INTO settings (halfday_hours, fullday_hours, ot_threshold, dot_threshold, dot_start_hour, tech_base_rate, customer_base_rate)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET 
+        halfday_hours=?, fullday_hours=?, ot_threshold=?, dot_threshold=?, dot_start_hour=?, tech_base_rate=?, customer_base_rate=?
+    `, [halfday_hours, fullday_hours, ot_threshold, dot_threshold, dot_start_hour, tech_base_rate, customer_base_rate,
+        halfday_hours, fullday_hours, ot_threshold, dot_threshold, dot_start_hour, tech_base_rate, customer_base_rate]);
+    
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 export default router;

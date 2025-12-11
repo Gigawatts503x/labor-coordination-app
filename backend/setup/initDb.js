@@ -48,7 +48,7 @@ const CREATE_TABLES_SQL = {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS technician_positions (
+CREATE TABLE IF NOT EXISTS technician_positions (
       id TEXT PRIMARY KEY,
       technician_id TEXT NOT NULL,
       position_name TEXT NOT NULL,
@@ -57,28 +57,36 @@ const CREATE_TABLES_SQL = {
       UNIQUE(technician_id, position_name)
     );
 
-    CREATE TABLE IF NOT EXISTS event_assignments (
-      id TEXT PRIMARY KEY,
-      event_id TEXT NOT NULL,
-      requirement_id TEXT,
-      technician_id TEXT NOT NULL,
-      position TEXT,
-      hours_worked REAL DEFAULT 0,
-      rate_type TEXT,
-      calculated_pay REAL DEFAULT 0,
-      customer_bill REAL DEFAULT 0,
-      assignment_date TEXT,
-      start_time TEXT,
-      end_time TEXT,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(event_id) REFERENCES events(id),
-      FOREIGN KEY(requirement_id) REFERENCES event_requirements(id),
-      FOREIGN KEY(technician_id) REFERENCES technicians(id)
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      halfday_hours INTEGER DEFAULT 5,
+      fullday_hours INTEGER DEFAULT 10,
+      ot_threshold INTEGER DEFAULT 10,
+      dot_threshold INTEGER DEFAULT 20,
+      dot_start_hour INTEGER DEFAULT 20,
+      tech_base_rate REAL DEFAULT 50,
+      customer_base_rate REAL DEFAULT 75,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-
+    CREATE TABLE IF NOT EXISTS rate_configs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      assignment_id INTEGER NOT NULL,
+      event_id INTEGER NOT NULL,
+      day_type TEXT DEFAULT 'full-day',
+      day_type_override BOOLEAN DEFAULT 0,
+      base_hours REAL,
+      ot_hours REAL DEFAULT 0,
+      dot_hours REAL DEFAULT 0,
+      tech_hourly_rate REAL,
+      customer_hourly_rate REAL,
+      tech_payout REAL DEFAULT 0,
+      customer_bill REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(assignment_id) REFERENCES event_assignments(id) ON DELETE CASCADE,
+      FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
 
     CREATE TABLE IF NOT EXISTS rate_configs (
       id TEXT PRIMARY KEY,
