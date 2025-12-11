@@ -12,7 +12,7 @@ import EditableCell from '../components/EditableCell';
 import EditableSelectCell from '../components/EditableSelectCell';
 import { updateAssignment } from '../utils/api';
 
-const RATE_TYPES = ['hourly', 'half-day', 'full-day'];
+const RATETYPE = ['hourly', 'half-day', 'full-day'];
 const BULK_EDIT_FIELDS = ['assignment_date', 'start_time', 'end_time', 'position'];
 
 const EventDetails = ({ eventId, onBack }) => {
@@ -59,7 +59,7 @@ const EventDetails = ({ eventId, onBack }) => {
     technician_id: '',
     position: '',
     hours_worked: '',
-    rate_type: 'hourly',
+    RATETYPE: 'hourly',
     assignment_date: '',
     start_time: '',
     end_time: '',
@@ -162,7 +162,7 @@ const EventDetails = ({ eventId, onBack }) => {
   // Assignment handlers
   const handleAddAssignment = async (e) => {
     e.preventDefault();
-    if (!formData.technician_id || !formData.rate_type) return;
+    if (!formData.technician_id || !formData.RATETYPE) return;
 
     const hours = parseFloat(formData.hours_worked || 0);
     const tech = technicians.find(t => t.id === formData.technician_id);
@@ -171,7 +171,7 @@ const EventDetails = ({ eventId, onBack }) => {
       technician_id: formData.technician_id,
       position: formData.position || (tech ? tech.position : null),
       hours_worked: hours,
-      rate_type: formData.rate_type,
+      RATETYPE: formData.RATETYPE,
       calculated_pay: 0,
       customer_bill: 0,
       assignment_date: formData.assignment_date || null,
@@ -186,7 +186,7 @@ const EventDetails = ({ eventId, onBack }) => {
         technician_id: '',
         position: '',
         hours_worked: '',
-        rate_type: 'hourly',
+        RATETYPE: 'hourly',
         assignment_date: '',
         start_time: '',
         end_time: '',
@@ -366,75 +366,116 @@ const EventDetails = ({ eventId, onBack }) => {
       {/* Requirements Section */}
       <div className="section">
         <h2>Requirements</h2>
-
-        <form onSubmit={handleAddRequirement} className="req-form">
+        
+        <form onSubmithandleAddRequirement className="requirement-form">
           <div className="form-row">
-            <input
-              type="date"
-              name="requirement_date"
-              value={reqForm.requirement_date}
-              onChange={handleReqFormChange}
-              placeholder="Date"
-              required
-            />
-            <input
-              type="text"
-              name="room_or_location"
-              value={reqForm.room_or_location}
-              onChange={handleReqFormChange}
-              placeholder="Room/Location"
-              required
-            />
-            <input
-              type="time"
-              name="set_time"
-              value={reqForm.set_time}
-              onChange={handleReqFormChange}
-              placeholder="Set Time"
-            />
-            <input
-              type="time"
-              name="start_time"
-              value={reqForm.start_time}
-              onChange={handleReqFormChange}
-              placeholder="Start Time"
-              required
-            />
-            <input
-              type="time"
-              name="end_time"
-              value={reqForm.end_time}
-              onChange={handleReqFormChange}
-              placeholder="End Time"
-              required
-            />
-            <input
-              type="time"
-              name="strike_time"
-              value={reqForm.strike_time}
-              onChange={handleReqFormChange}
-              placeholder="Strike Time"
-            />
-            <input
-              type="text"
-              name="position"
-              value={reqForm.position}
-              onChange={handleReqFormChange}
-              placeholder="Position"
-            />
-            <input
-              type="number"
-              name="techs_needed"
-              value={reqForm.techs_needed}
-              onChange={handleReqFormChange}
-              min="1"
-              placeholder="Techs Needed"
-            />
-            <button type="submit" className="btn btn-primary">
-              Add Requirement
-            </button>
+            <div className="form-group">
+              <label htmlFor="requirementdate">Date</label>
+              <input 
+                type="date" 
+                id="requirementdate"
+                name="requirementdate" 
+                value={reqForm.requirementdate} 
+                onChange={handleReqFormChange}
+                required 
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="roomorlocation">Room/Location</label>
+              <input 
+                type="text" 
+                id="roomorlocation"
+                name="roomorlocation" 
+                value={reqForm.roomorlocation} 
+                onChange={handleReqFormChange}
+                placeholder="e.g., Ballroom A"
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="settime">Set Time</label>
+              <input 
+                type="time" 
+                id="settime"
+                name="settime" 
+                value={reqForm.settime} 
+                onChange={handleReqFormChange}
+              />
+            </div>
           </div>
-        </form>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="starttime">Start Time</label>
+              <input 
+                type="time" 
+                id="starttime"
+                name="starttime" 
+                value={reqForm.starttime} 
+                onChange={handleReqFormChange}
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="endtime">End Time</label>
+              <input 
+                type="time" 
+                id="endtime"
+                name="endtime" 
+                value={reqForm.endtime} 
+                onChange={handleReqFormChange}
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="striketime">Strike Time</label>
+              <input 
+                type="time" 
+                id="striketime"
+                name="striketime" 
+                value={reqForm.striketime} 
+                onChange={handleReqFormChange}
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="position">Position</label>
+              <input 
+                type="text" 
+                id="position"
+                name="position" 
+                value={reqForm.position} 
+                onChange={handleReqFormChange}
+                placeholder="e.g., A1, Cam Op"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="techsneeded">Techs Needed</label>
+              <input 
+                type="number" 
+                id="techsneeded"
+                name="techsneeded" 
+                value={reqForm.techsneeded} 
+                onChange={handleReqFormChange}
+                min="1"
+              />
+            </div>
+
+            <div className="form-group">
+              <button type="submit" className="btn btn-success" style={{marginTop: '24px'}}>
+                Add Requirement
+              </button>
+            </div>
+          </div>
+        </form> 
+
 
         {loadingRequirements ? (
           <p>Loading requirements...</p>
@@ -504,94 +545,131 @@ const EventDetails = ({ eventId, onBack }) => {
       <div className="section">
         <h2>Assignments</h2>
 
-        <form onSubmit={handleAddAssignment} className="add-assignment-form">
+        <form onSubmit={handleAddAssignment} className="assignment-form">
           <div className="form-row">
-            <select
-              name="technician_id"
-              value={formData.technician_id}
-              onChange={handleFormChange}
-              required
-            >
-              <option value="">-- Select Technician --</option>
-              {technicians.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.position})
-                </option>
-              ))}
-            </select>
+            <div className="form-group">
+              <label htmlFor="technicianid">Technician</label>
+              <select 
+                id="technicianid"
+                name="technicianid" 
+                value={formData.technicianid} 
+                onChange={handleFormChange}
+                required 
+              >
+                <option value="">-- Select Technician --</option>
+                {technicians.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.position || 'No position'})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <input
-              type="text"
-              name="position"
-              value={formData.position}
-              onChange={handleFormChange}
-              placeholder="Position (optional)"
-            />
+            <div className="form-group">
+              <label htmlFor="position">Position</label>
+              <input 
+                type="text" 
+                id="position"
+                name="position" 
+                value={formData.position} 
+                onChange={handleFormChange}
+                placeholder="Leave blank for tech's primary position"
+              />
+            </div>
 
-            <input
-              type="number"
-              name="hours_worked"
-              value={formData.hours_worked}
-              onChange={handleFormChange}
-              placeholder="Hours"
-              step="0.5"
-            />
+            <div className="form-group">
+              <label htmlFor="hoursworked">Hours</label>
+              <input 
+                type="number" 
+                id="hoursworked"
+                name="hoursworked" 
+                step="0.25"
+                min="0"
+                value={formData.hoursworked} 
+                onChange={handleFormChange}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
 
-            <select
-              name="rate_type"
-              value={formData.rate_type}
-              onChange={handleFormChange}
-              required
-            >
-              {RATE_TYPES.map(rt => (
-                <option key={rt} value={rt}>
-                  {rt}
-                </option>
-              ))}
-            </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="RATETYPE">Rate Type</label>
+              <select 
+                id="RATETYPE"
+                name="RATETYPE" 
+                value={formData.RATETYPE} 
+                onChange={handleFormChange}
+                required
+              >
+                {RATETYPE.map(rt => (
+                  <option key={rt} value={rt}>
+                    {rt}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <input
-              type="date"
-              name="assignment_date"
-              value={formData.assignment_date}
-              onChange={handleFormChange}
-              placeholder="Date"
-            />
+            <div className="form-group">
+              <label htmlFor="assignmentdate">Date</label>
+              <input 
+                type="date" 
+                id="assignmentdate"
+                name="assignmentdate" 
+                value={formData.assignmentdate} 
+                onChange={handleFormChange}
+              />
+            </div>
 
-            <input
-              type="time"
-              name="start_time"
-              value={formData.start_time}
-              onChange={handleFormChange}
-              placeholder="Start"
-            />
+            <div className="form-group">
+              <label htmlFor="starttime">Start Time</label>
+              <input 
+                type="time" 
+                id="starttime"
+                name="starttime" 
+                value={formData.starttime} 
+                onChange={handleFormChange}
+              />
+            </div>
+          </div>
 
-            <input
-              type="time"
-              name="end_time"
-              value={formData.end_time}
-              onChange={handleFormChange}
-              placeholder="End"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="endtime">End Time</label>
+              <input 
+                type="time" 
+                id="endtime"
+                name="endtime" 
+                value={formData.endtime} 
+                onChange={handleFormChange}
+              />
+            </div>
 
-            <select
-              name="requirement_id"
-              value={formData.requirement_id}
-              onChange={handleFormChange}
-            >
-              <option value="">-- Requirement (optional) --</option>
-              {requirements.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.requirement_date} - {r.room_or_location}
-                </option>
-              ))}
-            </select>
+            <div className="form-group">
+              <label htmlFor="requirementid">Requirement (optional)</label>
+              <select 
+                id="requirementid"
+                name="requirementid" 
+                value={formData.requirementid} 
+                onChange={handleFormChange}
+              >
+                <option value="">-- Requirement (optional) --</option>
+                {requirements.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.requirementdate} - {r.roomorlocation} ({r.position}) {r.techsneeded} needed
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <button type="submit" className="btn btn-primary">
-              Add Assignment
-            </button>
+            <div className="form-group">
+              <button type="submit" className="btn btn-success" style={{marginTop: '24px'}}>
+                Add Assignment
+              </button>
+            </div>
           </div>
         </form>
+
 
         {/* Context Menu */}
         {contextMenu && (
@@ -780,12 +858,12 @@ const EventDetails = ({ eventId, onBack }) => {
                   {/* Rate Type - inline editable select */}
                   <td>
                     <EditableSelectCell
-                      value={a.rate_type || 'hourly'}
-                      options={RATE_TYPES}
+                      value={a.RATETYPE || 'hourly'}
+                      options={RATETYPE}
                       onSave={value =>
-                        handleInlineEditSave(a.id, 'rate_type', value)
+                        handleInlineEditSave(a.id, 'RATETYPE', value)
                       }
-                      displayValue={a.rate_type || '—'}
+                      displayValue={a.RATETYPE || '—'}
                     />
                   </td>
 
