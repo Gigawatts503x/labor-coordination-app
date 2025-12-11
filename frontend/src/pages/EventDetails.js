@@ -81,15 +81,16 @@ const EventDetails = ({ eventId, onBack }) => {
   const [loadingRequirements, setLoadingRequirements] = useState(false);
   const [reqError, setReqError] = useState(null);
   const [reqForm, setReqForm] = useState({
-    requirement_date: '',
-    room_or_location: '',
-    set_time: '',
-    start_time: '',
-    end_time: '',
-    strike_time: '',
-    position: '',
-    techs_needed: 1
-  });
+  requirementdate: '',
+  roomorlocation: '',
+  settime: '',
+  starttime: '',
+  endtime: '',
+  striketime: '',
+  position: '',
+  techsneeded: 1
+});
+
 
   // Load event, technicians, requirements
   useEffect(() => {
@@ -297,16 +298,18 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
-  // Requirement handlers
   const handleAddRequirement = async (e) => {
     e.preventDefault();
+    
     if (
-      !reqForm.requirementdate ||
-      !reqForm.roomorlocation ||
-      !reqForm.starttime ||
-      !reqForm.endtime
-    )
-      return;
+    !reqForm.requirementdate ||
+    !reqForm.roomorlocation ||
+    !reqForm.starttime ||
+    !reqForm.endtime
+  ) {
+    // Only show alert if truly empty
+    return;
+    }
 
     try {
       const res = await createEventRequirement(eventId, {
@@ -319,22 +322,29 @@ const EventDetails = ({ eventId, onBack }) => {
         position: reqForm.position || null,
         techs_needed: reqForm.techsneeded || 1
       });
-
       setRequirements([...requirements, res.data]);
+      // Keep date/time fields, only clear position and techs_needed
       setReqForm({
-        requirement_date: '',
-        room_or_location: '',
-        set_time: '',
-        start_time: '',
-        end_time: '',
-        strike_time: '',
+        requirementdate: reqForm.requirementdate,
+        roomorlocation: reqForm.roomorlocation,
+        settime: reqForm.settime,
+        starttime: reqForm.starttime,
+        endtime: reqForm.endtime,
+        striketime: reqForm.striketime,
         position: '',
-        techs_needed: 1
+        techsneeded: 1
       });
+
+
     } catch (err) {
+      console.error('Error creating requirement:', err);
       setReqError(err.message);
     }
   };
+
+
+
+
 
     const handleDeleteEvent = async () => {
     if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
@@ -388,7 +398,7 @@ const EventDetails = ({ eventId, onBack }) => {
       <div className="section">
         <h2>Requirements</h2>
         
-        <form onSubmithandleAddRequirement className="requirement-form">
+        <form onSubmit={handleAddRequirement} className="requirement-form">
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="requirementdate">Date</label>
@@ -530,9 +540,13 @@ const EventDetails = ({ eventId, onBack }) => {
                       {assignedCount}/{neededCount}
                     </span>
                   );
-                const assignedNames = r.assigned_techs
-                  ?.map(t => t.name)
-                  .join(', ');
+                const assignedNames = 
+                  typeof r.assigned_techs === 'string'
+                    ? r.assigned_techs
+                    : Array.isArray(r.assigned_techs)
+                    ? r.assigned_techs.map(t => t.name).join(', ')
+                    : '—';
+
 
                 return (
                   <tr key={r.id}>
