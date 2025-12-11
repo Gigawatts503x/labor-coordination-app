@@ -1,9 +1,8 @@
 // backend/routes/assignments.js
+
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { query, run } from '../config/database.js';
-
-
 
 const router = express.Router();
 
@@ -14,23 +13,19 @@ const router = express.Router();
 router.get('/events/:eventId/assignments', async (req, res, next) => {
   try {
     const { eventId } = req.params;
-
     const assignments = await query(
-      `
-      SELECT ea.*,
-             t.name AS technician_name,
-             t.position AS technician_primary_position,
-             e.name AS event_name,
-             e.client_name
-      FROM event_assignments ea
-      JOIN technicians t ON t.id = ea.technician_id
-      JOIN events e ON e.id = ea.event_id
-      WHERE ea.event_id = ?
-      ORDER BY ea.assignment_date ASC, ea.start_time ASC, ea.created_at ASC
-      `,
+      `SELECT ea.*,
+        t.name AS technician_name,
+        t.position AS technician_primary_position,
+        e.name AS event_name,
+        e.client_name
+       FROM event_assignments ea
+       JOIN technicians t ON t.id = ea.technician_id
+       JOIN events e ON e.id = ea.event_id
+       WHERE ea.event_id = ?
+       ORDER BY ea.assignment_date ASC, ea.start_time ASC, ea.created_at ASC`,
       [eventId]
     );
-
     res.json(assignments);
   } catch (err) {
     next(err);
@@ -45,7 +40,6 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
   try {
     const { eventId } = req.params;
     const id = uuid();
-
     const {
       technician_id,
       position,
@@ -61,13 +55,11 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
     } = req.body;
 
     await run(
-      `
-      INSERT INTO event_assignments
-        (id, event_id, technician_id, position, hours_worked, rate_type,
-         calculated_pay, customer_bill, assignment_date, start_time, end_time,
-         requirement_id, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+      `INSERT INTO event_assignments
+       (id, event_id, technician_id, position, hours_worked, rate_type,
+        calculated_pay, customer_bill, assignment_date, start_time, end_time,
+        requirement_id, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         eventId,
@@ -86,17 +78,15 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
     );
 
     const [assignment] = await query(
-      `
-      SELECT ea.*,
-             t.name AS technician_name,
-             t.position AS technician_primary_position,
-             e.name AS event_name,
-             e.client_name
-      FROM event_assignments ea
-      JOIN technicians t ON t.id = ea.technician_id
-      JOIN events e ON e.id = ea.event_id
-      WHERE ea.id = ?
-      `,
+      `SELECT ea.*,
+        t.name AS technician_name,
+        t.position AS technician_primary_position,
+        e.name AS event_name,
+        e.client_name
+       FROM event_assignments ea
+       JOIN technicians t ON t.id = ea.technician_id
+       JOIN events e ON e.id = ea.event_id
+       WHERE ea.id = ?`,
       [id]
     );
 
@@ -127,21 +117,19 @@ router.put('/assignments/:id', async (req, res, next) => {
     } = req.body;
 
     await run(
-      `
-      UPDATE event_assignments
-      SET position = ?,
-          hours_worked = ?,
-          rate_type = ?,
-          calculated_pay = ?,
-          customer_bill = ?,
-          assignment_date = ?,
-          start_time = ?,
-          end_time = ?,
-          requirement_id = ?,
-          notes = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-      `,
+      `UPDATE event_assignments
+       SET position = ?,
+           hours_worked = ?,
+           rate_type = ?,
+           calculated_pay = ?,
+           customer_bill = ?,
+           assignment_date = ?,
+           start_time = ?,
+           end_time = ?,
+           requirement_id = ?,
+           notes = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
       [
         position || null,
         hours_worked || 0,
@@ -158,17 +146,15 @@ router.put('/assignments/:id', async (req, res, next) => {
     );
 
     const [assignment] = await query(
-      `
-      SELECT ea.*,
-             t.name AS technician_name,
-             t.position AS technician_primary_position,
-             e.name AS event_name,
-             e.client_name
-      FROM event_assignments ea
-      JOIN technicians t ON t.id = ea.technician_id
-      JOIN events e ON e.id = ea.event_id
-      WHERE ea.id = ?
-      `,
+      `SELECT ea.*,
+        t.name AS technician_name,
+        t.position AS technician_primary_position,
+        e.name AS event_name,
+        e.client_name
+       FROM event_assignments ea
+       JOIN technicians t ON t.id = ea.technician_id
+       JOIN events e ON e.id = ea.event_id
+       WHERE ea.id = ?`,
       [id]
     );
 
@@ -189,9 +175,7 @@ router.put('/assignments/:id', async (req, res, next) => {
 router.delete('/assignments/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-
     await run('DELETE FROM event_assignments WHERE id = ?', [id]);
-
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -245,12 +229,10 @@ router.patch('/events/:eventId/assignments/bulk-update', async (req, res, next) 
 
     // Return updated assignments
     const updatedAssignments = await query(
-      `
-      SELECT ea.*, t.name as technician_name
-      FROM event_assignments ea
-      JOIN technicians t ON t.id = ea.technician_id
-      WHERE ea.event_id = ? AND ea.id IN (${placeholders})
-      `,
+      `SELECT ea.*, t.name as technician_name
+       FROM event_assignments ea
+       JOIN technicians t ON t.id = ea.technician_id
+       WHERE ea.event_id = ? AND ea.id IN (${placeholders})`,
       [eventId, ...assignmentIds]
     );
 
