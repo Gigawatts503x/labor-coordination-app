@@ -56,15 +56,16 @@ const EventDetails = ({ eventId, onBack }) => {
   };
 
   const [formData, setFormData] = useState({
-    technician_id: '',
-    position: '',
-    hours_worked: '',
-    RATETYPE: 'hourly',
-    assignment_date: '',
-    start_time: '',
-    end_time: '',
-    requirement_id: ''
-  });
+  technicianid: '',
+  position: '',
+  hoursworked: '',
+  ratetype: 'hourly',
+  assignmentdate: '',
+  starttime: '',
+  endtime: '',
+  requirementid: ''
+});
+
 
   // Bulk edit state
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState([]);
@@ -160,43 +161,71 @@ const EventDetails = ({ eventId, onBack }) => {
     }));
   };
 
-  // Assignment handlers
-  const handleAddAssignment = async (e) => {
-    e.preventDefault();
-    if (!formData.technician_id || !formData.RATETYPE) return;
+///////////////////////
+const handleAddAssignment = async (e) => {
+  e.preventDefault();
+  if (!formData.technicianid || !formData.ratetype) return;
 
-    const hours = parseFloat(formData.hours_worked || 0);
-    const tech = technicians.find(t => t.id === formData.technician_id);
+  // Check for scheduling conflicts
+  const selectedTech = formData.technicianid;
+  const assignmentDate = formData.assignmentdate;
+  const startTime = formData.starttime;
+  const endTime = formData.endtime;
 
-    const data = {
-      technician_id: formData.technician_id,
-      position: formData.position || (tech ? tech.position : null),
-      hours_worked: hours,
-      RATETYPE: formData.RATETYPE,
-      calculated_pay: 0,
-      customer_bill: 0,
-      assignment_date: formData.assignment_date || null,
-      start_time: formData.start_time || null,
-      end_time: formData.end_time || null,
-      requirement_id: formData.requirement_id || null
-    };
+  if (assignmentDate && startTime && endTime) {
+    const conflict = assignments.some(a => {
+      if (a.technician_id !== selectedTech || a.assignment_date !== assignmentDate) {
+        return false;
+      }
+      // Check for time overlap
+      const existingStart = a.start_time;
+      const existingEnd = a.end_time;
+      return (startTime < existingEnd && endTime > existingStart);
+    });
 
-    try {
-      await addAssignment(data);
-      setFormData({
-        technician_id: '',
-        position: '',
-        hours_worked: '',
-        RATETYPE: 'hourly',
-        assignment_date: '',
-        start_time: '',
-        end_time: '',
-        requirement_id: ''
-      });
-    } catch (err) {
-      console.error('Failed to add assignment', err);
+    if (conflict) {
+      alert(`❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`);
+      return;
     }
+  }
+
+
+  const hours = parseFloat(formData.hoursworked || 0);
+  const tech = technicians.find(t => t.id === formData.technicianid);
+
+  const data = {
+    technician_id: formData.technicianid,
+    position: formData.position || (tech ? tech.position : null),
+    hours_worked: hours,
+    rate_type: formData.ratetype,
+    calculated_pay: 0,
+    customer_bill: 0,
+    assignment_date: formData.assignmentdate || null,
+    start_time: formData.starttime || null,
+    end_time: formData.endtime || null,
+    requirement_id: formData.requirementid || null
   };
+
+  try {
+    await addAssignment(data);
+    setFormData({
+      technicianid: '',
+      position: '',
+      hoursworked: '',
+      ratetype: 'hourly',
+      assignmentdate: '',
+      starttime: '',
+      endtime: '',
+      requirementid: ''
+    });
+  } catch (err) {
+    console.error('Failed to add assignment', err);
+  }
+};
+
+
+
+///////////////////////
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this assignment?')) return;
@@ -358,6 +387,23 @@ const EventDetails = ({ eventId, onBack }) => {
       console.error('Failed to delete event:', err);
       alert(`Failed to delete event: ${err.message}`);
     }
+  };
+
+  const handleSelectRequirement = (requirement) => {
+    // Fill form with requirement details
+    setFormData({
+      technicianid: '',
+      position: requirement.position || '',
+      hoursworked: requirement.techs_needed || '',
+      ratetype: 'full-day',
+      assignmentdate: requirement.requirement_date || '',
+      starttime: requirement.start_time || '',
+      endtime: requirement.end_time || '',
+      requirementid: requirement.id
+    });
+    
+    // Scroll to assignment form
+    document.querySelector('.assignment-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleDeleteRequirement = async (id) => {
@@ -549,7 +595,11 @@ const EventDetails = ({ eventId, onBack }) => {
 
 
                 return (
-                  <tr key={r.id}>
+                  <tr 
+                    key={r.id}
+                    onClick={() => handleSelectRequirement(r)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td>{r.requirement_date || '—'}</td>
                     <td>{r.room_or_location}</td>
                     <td>{r.set_time || '—'}</td>
@@ -613,7 +663,7 @@ const EventDetails = ({ eventId, onBack }) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="hoursworked">Hours</label>
+              <label htmlFor="hoursworked">Hours / Days</label>
               <input 
                 type="number" 
                 id="hoursworked"
