@@ -75,6 +75,19 @@ const EventDetails = ({ eventId, onBack }) => {
 
 
   // ==========================================
+  // STATE - Requirements Sort & Filter
+  // ==========================================
+  const [reqSortField, setReqSortField] = useState('requirement_date');
+  const [reqSortDirection, setReqSortDirection] = useState('asc');
+  const [reqFilters, setReqFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    room: '',
+    position: ''
+  });
+
+
+  // ==========================================
   // STATE - Assignment Form
   // ==========================================
   const [formData, setFormData] = useState({
@@ -191,6 +204,93 @@ const EventDetails = ({ eventId, onBack }) => {
       ...prev,
       [name]: value
     }));
+  };
+
+
+  // ==========================================
+  // HANDLERS - Requirements Sort & Filter
+  // ==========================================
+  const handleReqSortClick = (field) => {
+    if (reqSortField === field) {
+      // Toggle direction if clicking same field
+      setReqSortDirection(reqSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to asc
+      setReqSortField(field);
+      setReqSortDirection('asc');
+    }
+  };
+
+
+  const handleReqFilterChange = (e) => {
+    const { name, value } = e.target;
+    setReqFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+
+  const clearReqFilters = () => {
+    setReqFilters({
+      dateFrom: '',
+      dateTo: '',
+      room: '',
+      position: ''
+    });
+    setReqSortField('requirement_date');
+    setReqSortDirection('asc');
+  };
+
+
+  const getFilteredAndSortedRequirements = () => {
+    let filtered = requirements;
+
+    // Apply filters
+    if (reqFilters.dateFrom) {
+      filtered = filtered.filter(r => r.requirement_date >= reqFilters.dateFrom);
+    }
+    if (reqFilters.dateTo) {
+      filtered = filtered.filter(r => r.requirement_date <= reqFilters.dateTo);
+    }
+    if (reqFilters.room) {
+      filtered = filtered.filter(r =>
+        r.room_or_location.toLowerCase().includes(reqFilters.room.toLowerCase())
+      );
+    }
+    if (reqFilters.position) {
+      filtered = filtered.filter(r =>
+        r.position && r.position.toLowerCase().includes(reqFilters.position.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal = a[reqSortField];
+      let bVal = b[reqSortField];
+
+      // Handle null/undefined
+      if (aVal == null) aVal = '';
+      if (bVal == null) bVal = '';
+
+      // String comparison
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return reqSortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return reqSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  };
+
+
+  const getSortIndicator = (field) => {
+    if (reqSortField !== field) return '';
+    return reqSortDirection === 'asc' ? ' ↑' : ' ↓';
   };
 
 
@@ -513,6 +613,10 @@ const EventDetails = ({ eventId, onBack }) => {
   if (!event) return <div>Event not found</div>;
 
 
+  // Get filtered and sorted requirements
+  const displayedRequirements = getFilteredAndSortedRequirements();
+
+
   // ==========================================
   // RENDER
   // ==========================================
@@ -671,69 +775,143 @@ const EventDetails = ({ eventId, onBack }) => {
         ) : requirements.length === 0 ? (
           <p>No requirements yet for this event.</p>
         ) : (
-          <table className="requirements-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Room</th>
-                <th>Set</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Strike</th>
-                <th>Position</th>
-                <th>Coverage</th>
-                <th>Assigned Techs</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requirements.map(r => {
-                const assignedCount = r.assigned_count || 0;
-                const neededCount = r.techs_needed || 0;
-                const coverageStatus =
-                  assignedCount >= neededCount ? (
-                    <span className="status-success">✓ Full</span>
-                  ) : (
-                    <span className="status-warning">
-                      {assignedCount}/{neededCount}
-                    </span>
+          <>
+            {/* Requirements Filter Controls */}
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '1', minWidth: '150px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Date From</label>
+                  <input
+                    type="date"
+                    name="dateFrom"
+                    value={reqFilters.dateFrom}
+                    onChange={handleReqFilterChange}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ flex: '1', minWidth: '150px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Date To</label>
+                  <input
+                    type="date"
+                    name="dateTo"
+                    value={reqFilters.dateTo}
+                    onChange={handleReqFilterChange}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ flex: '1', minWidth: '150px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Room/Location</label>
+                  <input
+                    type="text"
+                    name="room"
+                    placeholder="Search..."
+                    value={reqFilters.room}
+                    onChange={handleReqFilterChange}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ flex: '1', minWidth: '150px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Position</label>
+                  <input
+                    type="text"
+                    name="position"
+                    placeholder="Search..."
+                    value={reqFilters.position}
+                    onChange={handleReqFilterChange}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <button
+                  onClick={clearReqFilters}
+                  className="btn btn-secondary"
+                  style={{ marginTop: '0' }}
+                >
+                  Clear Filters
+                </button>
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                Showing {displayedRequirements.length} of {requirements.length} requirements
+              </div>
+            </div>
+
+            <table className="requirements-table">
+              <thead>
+                <tr>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('requirement_date')}>
+                    Date{getSortIndicator('requirement_date')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('room_or_location')}>
+                    Room{getSortIndicator('room_or_location')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('set_time')}>
+                    Set{getSortIndicator('set_time')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('start_time')}>
+                    Start{getSortIndicator('start_time')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('end_time')}>
+                    End{getSortIndicator('end_time')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('strike_time')}>
+                    Strike{getSortIndicator('strike_time')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('position')}>
+                    Position{getSortIndicator('position')}
+                  </th>
+                  <th>Coverage</th>
+                  <th>Assigned Techs</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedRequirements.map(r => {
+                  const assignedCount = r.assigned_count || 0;
+                  const neededCount = r.techs_needed || 0;
+                  const coverageStatus =
+                    assignedCount >= neededCount ? (
+                      <span className="status-success">✓ Full</span>
+                    ) : (
+                      <span className="status-warning">
+                        {assignedCount}/{neededCount}
+                      </span>
+                    );
+                  const assignedNames =
+                    typeof r.assigned_techs === 'string'
+                      ? r.assigned_techs
+                      : Array.isArray(r.assigned_techs)
+                      ? r.assigned_techs.map(t => t.name).join(', ')
+                      : '—';
+
+
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => handleSelectRequirement(r)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>{r.requirement_date || '—'}</td>
+                      <td>{r.room_or_location}</td>
+                      <td>{r.set_time || '—'}</td>
+                      <td>{r.start_time || '—'}</td>
+                      <td>{r.end_time || '—'}</td>
+                      <td>{r.strike_time || '—'}</td>
+                      <td>{r.position || '—'}</td>
+                      <td>{coverageStatus}</td>
+                      <td>{assignedNames ? assignedNames : '—'}</td>
+                      <td>
+                        <button
+                          className="btn btn-small btn-delete"
+                          onClick={() => handleDeleteRequirement(r.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
                   );
-                const assignedNames =
-                  typeof r.assigned_techs === 'string'
-                    ? r.assigned_techs
-                    : Array.isArray(r.assigned_techs)
-                    ? r.assigned_techs.map(t => t.name).join(', ')
-                    : '—';
-
-
-                return (
-                  <tr
-                    key={r.id}
-                    onClick={() => handleSelectRequirement(r)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td>{r.requirement_date || '—'}</td>
-                    <td>{r.room_or_location}</td>
-                    <td>{r.set_time || '—'}</td>
-                    <td>{r.start_time || '—'}</td>
-                    <td>{r.end_time || '—'}</td>
-                    <td>{r.strike_time || '—'}</td>
-                    <td>{r.position || '—'}</td>
-                    <td>{coverageStatus}</td>
-                    <td>{assignedNames ? assignedNames : '—'}</td>
-                    <td>
-                      <button
-                        className="btn btn-small btn-delete"
-                        onClick={() => handleDeleteRequirement(r.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          </>
         )}
         {reqError && <p className="error">{reqError}</p>}
       </div>
