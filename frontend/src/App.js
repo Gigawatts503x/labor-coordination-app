@@ -1,11 +1,16 @@
 // frontend/src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
 import Technicians from './pages/Technicians';
+import { initializeDarkMode } from './utils/darkMode';
 import './styles/App.css';
 
 function App() {
   const [page, setPage] = useState('dashboard');
+
+  useEffect(() => {
+    initializeDarkMode();
+  }, []);
 
   return (
     <div className="App">

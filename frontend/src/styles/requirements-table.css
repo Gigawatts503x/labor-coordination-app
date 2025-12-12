@@ -1,0 +1,257 @@
+/* Requirements Container */
+.requirements-section {
+  margin-bottom: 32px;
+  border: 10px solid #bf0060;
+  border-radius: 8px;
+  padding: 24px;
+  background: #fff;
+}
+
+.requirements-section h2 {
+  font-size: 20px;
+  color: #1f2121;
+  margin: 0 0 20px 0;
+  font-weight: 600;
+}
+
+/* Requirements Table Container */
+.requirements-table-container {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Requirements Table */
+.requirements-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: center;
+  border: 2px solid #dcdcdc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Table Header */
+.requirements-table thead {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #ddd;
+  position: flex;
+  top: 0;
+  z-index: 1;
+}
+
+.requirements-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: #1f2121;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* Table Body */
+.requirements-table tbody tr {
+  border-bottom: 1px solid #eee;
+  transition: background-color 150ms ease;
+}
+
+.requirements-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.requirements-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Table Cells */
+.requirements-table tbody td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #666;
+  vertical-align: middle;
+}
+
+/* Coverage Badge */
+.coverage-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 12px;
+  background-color: #e8f5f3;
+  color: #208d8d;
+  border: 1px solid #b8dedd;
+}
+
+.coverage-badge.partial {
+  background-color: #fff3e0;
+  color: #f57c00;
+  border: 1px solid #ffe0b2;
+}
+
+.coverage-badge.empty {
+  background-color: #ffebee;
+  color: #c0152f;
+  border: 1px solid #ef9a9a;
+}
+
+/* Requirement Actions */
+.requirement-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.requirement-actions .btn-small {
+  margin: 0;
+  white-space: nowrap;
+}
+
+
+/* Empty State */
+.requirements-empty-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: #666;
+  font-size: 14px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .requirements-table-container {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 16px;
+    background: transparent;
+  }
+
+  .requirements-table thead {
+    display: none;
+  }
+
+  .requirements-table tbody,
+  .requirements-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .requirements-table tbody tr {
+    margin-bottom: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .requirements-table tbody tr:hover {
+    background-color: #fff;
+    border-color: #208d8d;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .requirements-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #eee;
+    text-align: right;
+    min-height: 44px;
+  }
+
+  .requirements-table tbody td:first-child {
+    border-top: none;
+  }
+
+  .requirements-table tbody td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 600;
+    color: #1f2121;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    margin-right: auto;
+  }
+
+  .requirements-table tbody td:last-child {
+    flex-direction: column;
+    border-top: 1px solid #eee;
+    padding-top: 16px;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .requirements-table tbody td:last-child::before {
+    display: none;
+  }
+
+  .requirement-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .requirements-section h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .requirements-table-container {
+    margin-bottom: 12px;
+  }
+
+  .requirements-table tbody tr {
+    margin-bottom: 12px;
+  }
+
+  .requirements-table tbody td {
+    padding: 10px 12px;
+    font-size: 13px;
+    min-height: 40px;
+  }
+
+  .requirement-form {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .requirement-form h3 {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .requirement-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .requirement-actions .btn-small {
+    width: 100%;
+    text-align: center;
+  }
+
+  .requirements-empty-state {
+    padding: 24px 16px;
+    font-size: 13px;
+  }
+
+  .requirements-section h2 {
+    font-size: 16px;
+  }
+}
