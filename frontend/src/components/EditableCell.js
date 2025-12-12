@@ -3,39 +3,48 @@ import React, { useState, useRef, useEffect } from 'react';
 /**
  * EditableCell - A table cell content that becomes editable on double-click
  * Supports text, date, time, and number inputs
- * NOTE: This component returns content only, parent must wrap in <td>
+ * FIXED: Properly handles inline editing without affecting other cells
  */
 const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(value || '');
+  const [editValue, setEditValue] = useState(value);
   const inputRef = useRef(null);
 
-  // Sync inputValue when the value prop changes (from parent)
+  // Update local state when prop changes (when data refreshes)
   useEffect(() => {
-    if (!isEditing) {
-      setInputValue(value || '');
-    }
-  }, [value, isEditing]);
+    setEditValue(value);
+  }, [value]);
 
+  // Focus and select text when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
+      inputRef.current.select();
     }
   }, [isEditing]);
 
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+  };
+
   const handleSave = () => {
-    if (inputValue !== value) {
-      onSave(inputValue);
+    // Only call onSave if value actually changed
+    if (editValue !== value) {
+      onSave(editValue);
     }
     setIsEditing(false);
   };
 
-  const handleKeyPress = (e) => {
+  const handleCancel = () => {
+    setEditValue(value);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSave();
     } else if (e.key === 'Escape') {
-      setInputValue(value);
-      setIsEditing(false);
+      handleCancel();
     }
   };
 
@@ -44,15 +53,18 @@ const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
       <input
         ref={inputRef}
         type={type}
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleSave}
-        onKeyDown={handleKeyPress}
+        onKeyDown={handleKeyDown}
         style={{
-          padding: '4px',
+          width: '100%',
+          padding: '6px',
+          border: '2px solid #1a73e8',
+          borderRadius: '4px',
           fontSize: '14px',
-          border: '1px solid #ccc',
-          borderRadius: '4px'
+          fontFamily: 'inherit',
+          boxSizing: 'border-box'
         }}
       />
     );
@@ -60,10 +72,16 @@ const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
 
   return (
     <span
-      onDoubleClick={() => setIsEditing(true)}
-      style={{ cursor: 'pointer', padding: '4px' }}
+      onDoubleClick={handleDoubleClick}
+      style={{
+        cursor: 'pointer',
+        userSelect: 'none',
+        display: 'block',
+        padding: '4px'
+      }}
+      title="Double-click to edit"
     >
-      {displayValue || value || '-'}
+      {displayValue || '—'}
     </span>
   );
 };

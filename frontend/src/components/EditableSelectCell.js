@@ -1,19 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 /**
- * EditableSelectCell - A table cell with a select dropdown
- * Becomes editable on double-click
- * NOTE: This component returns content only, parent must wrap in <td>
+ * EditableSelectCell - A table cell with select dropdown on double-click
+ * FIXED: Properly handles selection changes without affecting other cells
  */
 const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const selectRef = useRef(null);
 
+  // Update local state when prop changes
   useEffect(() => {
     setEditValue(value);
   }, [value]);
 
+  // Focus when entering edit mode
   useEffect(() => {
     if (isEditing && selectRef.current) {
       selectRef.current.focus();
@@ -25,6 +26,7 @@ const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
   };
 
   const handleSave = () => {
+    // Only call onSave if value actually changed
     if (editValue !== value) {
       onSave(editValue);
     }
@@ -59,12 +61,10 @@ const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
           borderRadius: '4px',
           fontSize: '14px',
           fontFamily: 'inherit',
-          backgroundColor: 'white',
           boxSizing: 'border-box'
         }}
       >
-        <option value="">-- Select --</option>
-        {options && options.map((opt) => (
+        {options.map(opt => (
           <option key={opt} value={opt}>
             {opt}
           </option>
@@ -78,11 +78,13 @@ const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
       onDoubleClick={handleDoubleClick}
       style={{
         cursor: 'pointer',
-        userSelect: 'none'
+        userSelect: 'none',
+        display: 'block',
+        padding: '4px'
       }}
       title="Double-click to edit"
     >
-      {displayValue}
+      {displayValue || '—'}
     </span>
   );
 };

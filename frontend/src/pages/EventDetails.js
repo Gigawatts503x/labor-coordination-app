@@ -14,14 +14,16 @@ import { useAssignments } from '../hooks/useAssignments';
 import EditableCell from '../components/EditableCell';
 import EditableSelectCell from '../components/EditableSelectCell';
 import '../styles/EventDetails.css';
-import '../styles/table-dark-mode.css'; // ADD THIS
+import '../styles/table-dark-mode.css';
 import '../styles/requirements-table.css';
 import '../styles/requirements-form.css';
 import '../styles/assignments-table.css';
 
 
+
 const RATETYPE = ['hourly', 'half-day', 'full-day'];
 const BULK_EDIT_FIELDS = ['assignment_date', 'start_time', 'end_time', 'position'];
+
 
 
 const EventDetails = ({ eventId, onBack }) => {
@@ -33,16 +35,26 @@ const EventDetails = ({ eventId, onBack }) => {
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [error, setError] = useState(null);
 
+
   // ==========================================
-  // STATE - Assignments (from hook)
+  // STATE - Assignments (LOCAL COPY)
   // ==========================================
   const {
-    assignments,
+    assignments: hookAssignments,
     loading: loadingAssignments,
     addAssignment,
     removeAssignment,
     refreshAssignments
   } = useAssignments(eventId);
+
+  // Local state for assignments - this is what gets displayed
+  const [assignments, setAssignments] = useState([]);
+
+  // Sync hook assignments to local state
+  useEffect(() => {
+    setAssignments(hookAssignments);
+  }, [hookAssignments]);
+
 
   // ==========================================
   // STATE - Requirements
@@ -61,6 +73,7 @@ const EventDetails = ({ eventId, onBack }) => {
     techsneeded: 1
   });
 
+
   // ==========================================
   // STATE - Assignment Form
   // ==========================================
@@ -74,6 +87,7 @@ const EventDetails = ({ eventId, onBack }) => {
     endtime: '',
     requirementid: ''
   });
+
 
   // ==========================================
   // STATE - Bulk Edit & Modals
@@ -97,6 +111,7 @@ const EventDetails = ({ eventId, onBack }) => {
     tech_base_rate: 50,
     customer_base_rate: 75
   });
+
 
   // ==========================================
   // EFFECTS
@@ -130,12 +145,14 @@ const EventDetails = ({ eventId, onBack }) => {
     if (eventId) load();
   }, [eventId]);
 
+
   // Close context menu on click outside
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
+
 
   // ==========================================
   // HANDLERS - Form Changes
@@ -153,6 +170,7 @@ const EventDetails = ({ eventId, onBack }) => {
     }));
   };
 
+
   const handleReqFormChange = (e) => {
     const { name, value } = e.target;
     setReqForm(prev => ({
@@ -166,6 +184,7 @@ const EventDetails = ({ eventId, onBack }) => {
     }));
   };
 
+
   const handleBulkEditValueChange = (e) => {
     const { name, value } = e.target;
     setBulkEditValues(prev => ({
@@ -174,8 +193,9 @@ const EventDetails = ({ eventId, onBack }) => {
     }));
   };
 
+
   // ==========================================
-  // HANDLERS - Inline Editing
+  // HANDLERS - Inline Editing (FIXED - Now saves data)
   // ==========================================
   const handleInlineEditSave = async (assignmentId, field, value) => {
     try {
@@ -187,17 +207,30 @@ const EventDetails = ({ eventId, onBack }) => {
         return;
       }
 
+      // Save to backend
       await updateAssignment(assignmentId, {
         [field]: value || null
       });
 
       console.log('✅ Update successful');
-      await refreshAssignments();
+      
+      // CRITICAL FIX: Update local state immediately after successful save
+      // This ensures the edited value persists without needing a full refresh
+      setAssignments(prevAssignments =>
+        prevAssignments.map(a =>
+          a.id === assignmentId
+            ? { ...a, [field]: value }
+            : a
+        )
+      );
     } catch (err) {
       console.error('❌ Error saving assignment:', err);
       alert(`Failed to save ${field}: ${err.message}`);
+      // Only refresh on error to recover data consistency
+      await refreshAssignments();
     }
   };
+
 
   // ==========================================
   // HANDLERS - Assignment Operations
@@ -206,11 +239,13 @@ const EventDetails = ({ eventId, onBack }) => {
     e.preventDefault();
     if (!formData.technicianid || !formData.ratetype) return;
 
+
     // Check for scheduling conflicts
     const selectedTech = formData.technicianid;
     const assignmentDate = formData.assignmentdate;
     const startTime = formData.starttime;
     const endTime = formData.endtime;
+
 
     if (assignmentDate && startTime && endTime) {
       const conflict = assignments.some(a => {
@@ -222,14 +257,17 @@ const EventDetails = ({ eventId, onBack }) => {
         return (startTime < existingEnd && endTime > existingStart);
       });
 
+
       if (conflict) {
         alert(`❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`);
         return;
       }
     }
 
+
     const hours = parseFloat(formData.hoursworked || 0);
     const tech = technicians.find(t => t.id === formData.technicianid);
+
 
     const data = {
       technician_id: formData.technicianid,
@@ -243,6 +281,7 @@ const EventDetails = ({ eventId, onBack }) => {
       end_time: formData.endtime || null,
       requirement_id: formData.requirementid || null
     };
+
 
     try {
       await addAssignment(data);
@@ -261,6 +300,7 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this assignment?')) return;
     try {
@@ -269,6 +309,7 @@ const EventDetails = ({ eventId, onBack }) => {
       console.error('Failed to delete assignment', err);
     }
   };
+
 
   const handleDeleteEvent = async () => {
     if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
@@ -284,6 +325,7 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   // ==========================================
   // HANDLERS - Bulk Edit
   // ==========================================
@@ -295,6 +337,7 @@ const EventDetails = ({ eventId, onBack }) => {
     );
   };
 
+
   const toggleSelectAll = () => {
     if (selectedAssignmentIds.length === assignments.length) {
       setSelectedAssignmentIds([]);
@@ -302,6 +345,7 @@ const EventDetails = ({ eventId, onBack }) => {
       setSelectedAssignmentIds(assignments.map(a => a.id));
     }
   };
+
 
   const handleContextMenu = (e, assignmentId) => {
     e.preventDefault();
@@ -316,6 +360,7 @@ const EventDetails = ({ eventId, onBack }) => {
         : [assignmentId]
     });
   };
+
 
   const openBulkEditModal = () => {
     if (contextMenu?.assignmentIds?.length) {
@@ -332,8 +377,10 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   const handleBulkEditSubmit = async () => {
     if (!bulkEditModal?.assignmentIds?.length) return;
+
 
     const updates = {};
     BULK_EDIT_FIELDS.forEach(field => {
@@ -342,15 +389,18 @@ const EventDetails = ({ eventId, onBack }) => {
       }
     });
 
+
     if (Object.keys(updates).length === 0) {
       alert('Please enter at least one value to update');
       return;
     }
 
+
     const count = bulkEditModal.assignmentIds.length;
     if (!window.confirm(`Apply these changes to ${count} assignment(s)?`)) {
       return;
     }
+
 
     try {
       console.log('🔄 BULK UPDATE STARTING', {
@@ -375,11 +425,13 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   // ==========================================
   // HANDLERS - Requirements
   // ==========================================
   const handleAddRequirement = async (e) => {
     e.preventDefault();
+
 
     if (
       !reqForm.requirementdate ||
@@ -389,6 +441,7 @@ const EventDetails = ({ eventId, onBack }) => {
     ) {
       return;
     }
+
 
     try {
       const res = await createEventRequirement(eventId, {
@@ -418,6 +471,7 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   const handleSelectRequirement = (requirement) => {
     setFormData({
       technicianid: '',
@@ -432,6 +486,7 @@ const EventDetails = ({ eventId, onBack }) => {
     document.querySelector('.assignment-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+
   const handleDeleteRequirement = async (id) => {
     if (!window.confirm('Delete this requirement?')) return;
     try {
@@ -442,11 +497,13 @@ const EventDetails = ({ eventId, onBack }) => {
     }
   };
 
+
   // ==========================================
   // CALCULATIONS
   // ==========================================
   const totalPay = assignments.reduce((sum, a) => sum + (a.calculated_pay || 0), 0);
   const totalBill = assignments.reduce((sum, a) => sum + (a.customer_bill || 0), 0);
+
 
   // ==========================================
   // LOADING STATES
@@ -454,6 +511,7 @@ const EventDetails = ({ eventId, onBack }) => {
   if (loadingEvent) return <div>Loading event...</div>;
   if (error) return <div className="error">Error: {error}</div>;
   if (!event) return <div>Event not found</div>;
+
 
   // ==========================================
   // RENDER
@@ -470,6 +528,7 @@ const EventDetails = ({ eventId, onBack }) => {
         </button>
       </div>
 
+
       {/* Event Info */}
       <div className="event-header">
         <h1>{event.name}</h1>
@@ -483,9 +542,11 @@ const EventDetails = ({ eventId, onBack }) => {
         </button>
       </div>
 
+
       {/* Requirements Section */}
       <div className="section">
         <h2>Requirements</h2>
+
 
         <form onSubmit={handleAddRequirement} className="requirement-form">
           <div className="form-row">
@@ -501,6 +562,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <label htmlFor="roomorlocation">Room/Location</label>
               <input
@@ -514,6 +576,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <label htmlFor="settime">Set Time</label>
               <input
@@ -525,6 +588,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
           </div>
+
 
           <div className="form-row">
             <div className="form-group">
@@ -539,6 +603,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <label htmlFor="endtime">End Time</label>
               <input
@@ -551,6 +616,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <label htmlFor="striketime">Strike Time</label>
               <input
@@ -562,6 +628,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
           </div>
+
 
           <div className="form-row">
             <div className="form-group">
@@ -576,6 +643,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <label htmlFor="techsneeded">Techs Needed</label>
               <input
@@ -588,6 +656,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
 
+
             <div className="form-group">
               <button type="submit" className="btn btn-success" style={{ marginTop: '24px' }}>
                 Add Requirement
@@ -595,6 +664,7 @@ const EventDetails = ({ eventId, onBack }) => {
             </div>
           </div>
         </form>
+
 
         {loadingRequirements ? (
           <p>Loading requirements...</p>
@@ -635,6 +705,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     ? r.assigned_techs.map(t => t.name).join(', ')
                     : '—';
 
+
                 return (
                   <tr
                     key={r.id}
@@ -667,9 +738,11 @@ const EventDetails = ({ eventId, onBack }) => {
         {reqError && <p className="error">{reqError}</p>}
       </div>
 
+
       {/* Assignments Section */}
       <div className="section">
         <h2>Assignments</h2>
+
 
         <form onSubmit={handleAddAssignment} className="assignment-form">
           <div className="form-row">
@@ -691,6 +764,7 @@ const EventDetails = ({ eventId, onBack }) => {
               </select>
             </div>
 
+
             <div className="form-group">
               <label htmlFor="position">Position</label>
               <input
@@ -702,6 +776,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 placeholder="Leave blank for tech's primary position"
               />
             </div>
+
 
             <div className="form-group">
               <label htmlFor="hoursworked">Hours / Days</label>
@@ -717,6 +792,7 @@ const EventDetails = ({ eventId, onBack }) => {
               />
             </div>
           </div>
+
 
           <div className="form-row">
             <div className="form-group">
@@ -736,6 +812,7 @@ const EventDetails = ({ eventId, onBack }) => {
               </select>
             </div>
 
+
             <div className="form-group">
               <label htmlFor="assignmentdate">Date</label>
               <input
@@ -746,6 +823,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 onChange={handleFormChange}
               />
             </div>
+
 
             <div className="form-group">
               <label htmlFor="starttime">Start Time</label>
@@ -759,6 +837,7 @@ const EventDetails = ({ eventId, onBack }) => {
             </div>
           </div>
 
+
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="endtime">End Time</label>
@@ -770,6 +849,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 onChange={handleFormChange}
               />
             </div>
+
 
             <div className="form-group">
               <label htmlFor="requirementid">Requirement (optional)</label>
@@ -788,6 +868,7 @@ const EventDetails = ({ eventId, onBack }) => {
               </select>
             </div>
 
+
             <div className="form-group">
               <button type="submit" className="btn btn-success" style={{ marginTop: '24px' }}>
                 Add Assignment
@@ -795,6 +876,7 @@ const EventDetails = ({ eventId, onBack }) => {
             </div>
           </div>
         </form>
+
 
         {/* Context Menu */}
         {contextMenu && (
@@ -805,6 +887,7 @@ const EventDetails = ({ eventId, onBack }) => {
             <button onClick={openBulkEditModal}>📝 Bulk Edit</button>
           </div>
         )}
+
 
         {/* Bulk Edit Modal */}
         {bulkEditModal && (
@@ -861,6 +944,7 @@ const EventDetails = ({ eventId, onBack }) => {
           </div>
         )}
 
+
         {/* Assignments Table */}
         {loadingAssignments ? (
           <p>Loading assignments…</p>
@@ -893,6 +977,7 @@ const EventDetails = ({ eventId, onBack }) => {
               </tr>
             </thead>
 
+
             <tbody>
               {assignments.map(a => (
                 <tr
@@ -914,6 +999,7 @@ const EventDetails = ({ eventId, onBack }) => {
                   </td>
                   <td>{a.technician_name}</td>
 
+
                   <td>
                     <EditableCell
                       value={a.assignment_date || ''}
@@ -924,6 +1010,7 @@ const EventDetails = ({ eventId, onBack }) => {
                       displayValue={a.assignment_date || '—'}
                     />
                   </td>
+
 
                   <td>
                     <EditableCell
@@ -936,6 +1023,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     />
                   </td>
 
+
                   <td>
                     <EditableCell
                       value={a.end_time || ''}
@@ -946,6 +1034,7 @@ const EventDetails = ({ eventId, onBack }) => {
                       displayValue={a.end_time || '—'}
                     />
                   </td>
+
 
                   <td>
                     <EditableCell
@@ -958,6 +1047,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     />
                   </td>
 
+
                   <td>
                     <EditableCell
                       value={a.hours_worked || ''}
@@ -969,6 +1059,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     />
                   </td>
 
+
                   <td>
                     <EditableSelectCell
                       value={a.rate_type || 'hourly'}
@@ -979,6 +1070,7 @@ const EventDetails = ({ eventId, onBack }) => {
                       displayValue={a.rate_type || '—'}
                     />
                   </td>
+
 
                   <td>${(a.calculated_pay || 0).toFixed(2)}</td>
                   <td>${(a.customer_bill || 0).toFixed(2)}</td>
@@ -996,6 +1088,7 @@ const EventDetails = ({ eventId, onBack }) => {
           </table>
         )}
 
+
         {/* Summary */}
         <div className="assignments-summary">
           <p>
@@ -1006,6 +1099,7 @@ const EventDetails = ({ eventId, onBack }) => {
           </p>
         </div>
       </div>
+
 
       {/* Settings Modal */}
       {settingsModal && (
@@ -1024,6 +1118,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 />
               </div>
 
+
               <div className="form-group">
                 <label>Full-Day Hours</label>
                 <input
@@ -1034,6 +1129,7 @@ const EventDetails = ({ eventId, onBack }) => {
                   }
                 />
               </div>
+
 
               <div className="form-group">
                 <label>OT Threshold (hours)</label>
@@ -1046,6 +1142,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 />
               </div>
 
+
               <div className="form-group">
                 <label>DOT Threshold (hours)</label>
                 <input
@@ -1056,6 +1153,7 @@ const EventDetails = ({ eventId, onBack }) => {
                   }
                 />
               </div>
+
 
               <div className="form-group">
                 <label>DOT Start Hour (24-hour format, e.g., 20 = 8pm)</label>
@@ -1070,6 +1168,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 />
               </div>
 
+
               <div className="form-group">
                 <label>Default Tech Base Rate</label>
                 <input
@@ -1081,6 +1180,7 @@ const EventDetails = ({ eventId, onBack }) => {
                   }
                 />
               </div>
+
 
               <div className="form-group">
                 <label>Default Customer Base Rate</label>
@@ -1094,6 +1194,7 @@ const EventDetails = ({ eventId, onBack }) => {
                 />
               </div>
             </div>
+
 
             <div className="modal-buttons">
               <button
@@ -1123,5 +1224,6 @@ const EventDetails = ({ eventId, onBack }) => {
     </div>
   );
 };
+
 
 export default EventDetails;
