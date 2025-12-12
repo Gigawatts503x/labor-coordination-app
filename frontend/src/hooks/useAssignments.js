@@ -1,5 +1,5 @@
-// frontend/src/hooks/useAssignments.js
 import { useState, useEffect } from 'react';
+
 import {
   getEventAssignments,
   createEventAssignment,
@@ -25,7 +25,6 @@ export const useAssignments = (eventId) => {
         setLoading(false);
       }
     };
-
     fetchAssignments();
   }, [eventId]);
 
@@ -60,5 +59,25 @@ export const useAssignments = (eventId) => {
     }
   };
 
-  return { assignments, loading, error, addAssignment, removeAssignment, refreshAssignments };
+  const updateAssignmentLocal = async (id, updates) => {
+    try {
+      setAssignments(assignments.map(a => 
+        a.id === id ? { ...a, ...updates } : a
+      ));
+      return true;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  return { 
+    assignments, 
+    loading, 
+    error, 
+    addAssignment, 
+    removeAssignment, 
+    refreshAssignments,
+    updateAssignmentLocal 
+  };
 };
