@@ -88,6 +88,19 @@ const EventDetails = ({ eventId, onBack }) => {
 
 
   // ==========================================
+  // STATE - Assignments Sort & Filter
+  // ==========================================
+  const [assignSortField, setAssignSortField] = useState('assignment_date');
+  const [assignSortDirection, setAssignSortDirection] = useState('asc');
+  const [assignFilters, setAssignFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    technician: '',
+    position: ''
+  });
+
+
+  // ==========================================
   // STATE - Assignment Form
   // ==========================================
   const [formData, setFormData] = useState({
@@ -212,10 +225,8 @@ const EventDetails = ({ eventId, onBack }) => {
   // ==========================================
   const handleReqSortClick = (field) => {
     if (reqSortField === field) {
-      // Toggle direction if clicking same field
       setReqSortDirection(reqSortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // New field, default to asc
       setReqSortField(field);
       setReqSortDirection('asc');
     }
@@ -269,11 +280,9 @@ const EventDetails = ({ eventId, onBack }) => {
       let aVal = a[reqSortField];
       let bVal = b[reqSortField];
 
-      // Handle null/undefined
       if (aVal == null) aVal = '';
       if (bVal == null) bVal = '';
 
-      // String comparison
       if (typeof aVal === 'string') {
         aVal = aVal.toLowerCase();
         bVal = bVal.toLowerCase();
@@ -288,14 +297,97 @@ const EventDetails = ({ eventId, onBack }) => {
   };
 
 
-  const getSortIndicator = (field) => {
+  const getReqSortIndicator = (field) => {
     if (reqSortField !== field) return '';
     return reqSortDirection === 'asc' ? ' ↑' : ' ↓';
   };
 
 
   // ==========================================
-  // HANDLERS - Inline Editing (FIXED - Now saves data)
+  // HANDLERS - Assignments Sort & Filter
+  // ==========================================
+  const handleAssignSortClick = (field) => {
+    if (assignSortField === field) {
+      setAssignSortDirection(assignSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setAssignSortField(field);
+      setAssignSortDirection('asc');
+    }
+  };
+
+
+  const handleAssignFilterChange = (e) => {
+    const { name, value } = e.target;
+    setAssignFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+
+  const clearAssignFilters = () => {
+    setAssignFilters({
+      dateFrom: '',
+      dateTo: '',
+      technician: '',
+      position: ''
+    });
+    setAssignSortField('assignment_date');
+    setAssignSortDirection('asc');
+  };
+
+
+  const getFilteredAndSortedAssignments = () => {
+    let filtered = assignments;
+
+    // Apply filters
+    if (assignFilters.dateFrom) {
+      filtered = filtered.filter(a => a.assignment_date >= assignFilters.dateFrom);
+    }
+    if (assignFilters.dateTo) {
+      filtered = filtered.filter(a => a.assignment_date <= assignFilters.dateTo);
+    }
+    if (assignFilters.technician) {
+      filtered = filtered.filter(a =>
+        a.technician_name.toLowerCase().includes(assignFilters.technician.toLowerCase())
+      );
+    }
+    if (assignFilters.position) {
+      filtered = filtered.filter(a =>
+        a.position && a.position.toLowerCase().includes(assignFilters.position.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal = a[assignSortField];
+      let bVal = b[assignSortField];
+
+      if (aVal == null) aVal = '';
+      if (bVal == null) bVal = '';
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return assignSortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return assignSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  };
+
+
+  const getAssignSortIndicator = (field) => {
+    if (assignSortField !== field) return '';
+    return assignSortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+
+
+  // ==========================================
+  // HANDLERS - Inline Editing
   // ==========================================
   const handleInlineEditSave = async (assignmentId, field, value) => {
     try {
@@ -307,15 +399,12 @@ const EventDetails = ({ eventId, onBack }) => {
         return;
       }
 
-      // Save to backend
       await updateAssignment(assignmentId, {
         [field]: value || null
       });
 
       console.log('✅ Update successful');
       
-      // CRITICAL FIX: Update local state immediately after successful save
-      // This ensures the edited value persists without needing a full refresh
       setAssignments(prevAssignments =>
         prevAssignments.map(a =>
           a.id === assignmentId
@@ -326,8 +415,51 @@ const EventDetails = ({ eventId, onBack }) => {
     } catch (err) {
       console.error('❌ Error saving assignment:', err);
       alert(`Failed to save ${field}: ${err.message}`);
-      // Only refresh on error to recover data consistency
       await refreshAssignments();
+    }
+  };
+
+
+  // ==========================================
+  // HANDLERS - Requirement Inline Editing
+  // ==========================================
+  const handleRequirementEditSave = async (requirementId, field, value) => {
+    try {
+      console.log(`💾 Saving requirement ${field}:`, value, 'for requirement:', requirementId);
+
+      const requirement = requirements.find(r => r.id === requirementId);
+      if (requirement && requirement[field] === value) {
+        console.log('No change detected, skipping update');
+        return;
+      }
+
+      // Map display field names to API field names
+      const fieldMap = {
+        requirement_date: 'requirement_date',
+        room_or_location: 'room_or_location',
+        set_time: 'set_time',
+        start_time: 'start_time',
+        end_time: 'end_time',
+        strike_time: 'strike_time',
+        position: 'position'
+      };
+
+      await api.patch(`/requirements/${requirementId}`, {
+        [fieldMap[field]]: value || null
+      });
+
+      console.log('✅ Update successful');
+      
+      setRequirements(prevRequirements =>
+        prevRequirements.map(r =>
+          r.id === requirementId
+            ? { ...r, [field]: value }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error('❌ Error saving requirement:', err);
+      alert(`Failed to save ${field}: ${err.message}`);
     }
   };
 
@@ -572,7 +704,7 @@ const EventDetails = ({ eventId, onBack }) => {
   };
 
 
-  const handleSelectRequirement = (requirement) => {
+  const handleAssignRequirement = (requirement) => {
     setFormData({
       technicianid: '',
       position: requirement.position || '',
@@ -613,8 +745,9 @@ const EventDetails = ({ eventId, onBack }) => {
   if (!event) return <div>Event not found</div>;
 
 
-  // Get filtered and sorted requirements
+  // Get filtered and sorted data
   const displayedRequirements = getFilteredAndSortedRequirements();
+  const displayedAssignments = getFilteredAndSortedAssignments();
 
 
   // ==========================================
@@ -777,8 +910,8 @@ const EventDetails = ({ eventId, onBack }) => {
         ) : (
           <>
             {/* Requirements Filter Controls */}
-            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ marginBottom: '5px', padding: '5px', backgroundColor: '#f9f9f9', borderRadius: '0px', border: '1px solid #ddd' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '0px', flexWrap: 'wrap', alignItems: 'flex-end',}}>
                 <div style={{ flex: '1', minWidth: '150px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Date From</label>
                   <input
@@ -786,7 +919,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     name="dateFrom"
                     value={reqFilters.dateFrom}
                     onChange={handleReqFilterChange}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '1', minWidth: '150px' }}>
@@ -796,7 +929,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     name="dateTo"
                     value={reqFilters.dateTo}
                     onChange={handleReqFilterChange}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '1', minWidth: '150px' }}>
@@ -807,7 +940,7 @@ const EventDetails = ({ eventId, onBack }) => {
                     placeholder="Search..."
                     value={reqFilters.room}
                     onChange={handleReqFilterChange}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '1', minWidth: '150px' }}>
@@ -818,18 +951,18 @@ const EventDetails = ({ eventId, onBack }) => {
                     placeholder="Search..."
                     value={reqFilters.position}
                     onChange={handleReqFilterChange}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <button
                   onClick={clearReqFilters}
                   className="btn btn-secondary"
-                  style={{ marginTop: '0' }}
+                  style={{ marginTop: '0', padding: '6px 20px' }}
                 >
                   Clear Filters
                 </button>
               </div>
-              <div style={{ fontSize: '12px', color: '#666' }}>
+              <div style={{ fontSize: '10px', color: '#666' }}>
                 Showing {displayedRequirements.length} of {requirements.length} requirements
               </div>
             </div>
@@ -838,28 +971,29 @@ const EventDetails = ({ eventId, onBack }) => {
               <thead>
                 <tr>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('requirement_date')}>
-                    Date{getSortIndicator('requirement_date')}
+                    Date{getReqSortIndicator('requirement_date')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('room_or_location')}>
-                    Room{getSortIndicator('room_or_location')}
+                    Room{getReqSortIndicator('room_or_location')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('set_time')}>
-                    Set{getSortIndicator('set_time')}
+                    Set{getReqSortIndicator('set_time')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('start_time')}>
-                    Start{getSortIndicator('start_time')}
+                    Start{getReqSortIndicator('start_time')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('end_time')}>
-                    End{getSortIndicator('end_time')}
+                    End{getReqSortIndicator('end_time')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('strike_time')}>
-                    Strike{getSortIndicator('strike_time')}
+                    Strike{getReqSortIndicator('strike_time')}
                   </th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleReqSortClick('position')}>
-                    Position{getSortIndicator('position')}
+                    Position{getReqSortIndicator('position')}
                   </th>
                   <th>Coverage</th>
                   <th>Assigned Techs</th>
+                  <th>Assign</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -886,16 +1020,78 @@ const EventDetails = ({ eventId, onBack }) => {
                   return (
                     <tr
                       key={r.id}
-                      onClick={() => handleSelectRequirement(r)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td>{r.requirement_date || '—'}</td>
-                      <td>{r.room_or_location}</td>
-                      <td>{r.set_time || '—'}</td>
-                      <td>{r.start_time || '—'}</td>
-                      <td>{r.end_time || '—'}</td>
-                      <td>{r.strike_time || '—'}</td>
-                      <td>{r.position || '—'}</td>
+                      <td>
+                        <EditableCell
+                          value={r.requirement_date || ''}
+                          type="date"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'requirement_date', value)
+                          }
+                          displayValue={r.requirement_date || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.room_or_location || ''}
+                          type="text"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'room_or_location', value)
+                          }
+                          displayValue={r.room_or_location || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.set_time || ''}
+                          type="time"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'set_time', value)
+                          }
+                          displayValue={r.set_time || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.start_time || ''}
+                          type="time"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'start_time', value)
+                          }
+                          displayValue={r.start_time || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.end_time || ''}
+                          type="time"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'end_time', value)
+                          }
+                          displayValue={r.end_time || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.strike_time || ''}
+                          type="time"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'strike_time', value)
+                          }
+                          displayValue={r.strike_time || '—'}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={r.position || ''}
+                          type="text"
+                          onSave={value =>
+                            handleRequirementEditSave(r.id, 'position', value)
+                          }
+                          displayValue={r.position || '—'}
+                        />
+                      </td>
                       <td>{coverageStatus}</td>
                       <td>{assignedNames ? assignedNames : '—'}</td>
                       <td>
@@ -1123,6 +1319,67 @@ const EventDetails = ({ eventId, onBack }) => {
         )}
 
 
+        {/* Assignments Filter Controls */}
+        {assignments.length > 0 && (
+          <div style={{ marginBottom: '5px', padding: '5px', backgroundColor: '#f9f9f9', borderRadius: '0px', border: '1px solid #ddd' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '0px', flexWrap: 'wrap', alignItems: 'flex-end',}}>
+              <div style={{ flex: '1', minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Date From</label>
+                <input
+                  type="date"
+                  name="dateFrom"
+                  value={assignFilters.dateFrom}
+                  onChange={handleAssignFilterChange}
+                  style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: '1', minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Date To</label>
+                <input
+                  type="date"
+                  name="dateTo"
+                  value={assignFilters.dateTo}
+                  onChange={handleAssignFilterChange}
+                  style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: '1', minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Technician</label>
+                <input
+                  type="text"
+                  name="technician"
+                  placeholder="Search..."
+                  value={assignFilters.technician}
+                  onChange={handleAssignFilterChange}
+                  style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: '1', minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: '500' }}>Position</label>
+                <input
+                  type="text"
+                  name="position"
+                  placeholder="Search..."
+                  value={assignFilters.position}
+                  onChange={handleAssignFilterChange}
+                  style={{ width: '100%', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button
+                onClick={clearAssignFilters}
+                className="btn btn-secondary"
+                style={{ marginTop: '0', padding: '6px 20px' }}
+              >
+                Clear Filters
+              </button>
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              Showing {displayedAssignments.length} of {assignments.length} assignments
+            </div>
+          </div>
+        )}
+
+
         {/* Assignments Table */}
         {loadingAssignments ? (
           <p>Loading assignments…</p>
@@ -1136,17 +1393,27 @@ const EventDetails = ({ eventId, onBack }) => {
                   <input
                     type="checkbox"
                     checked={
-                      selectedAssignmentIds.length === assignments.length &&
-                      assignments.length > 0
+                      selectedAssignmentIds.length === displayedAssignments.length &&
+                      displayedAssignments.length > 0
                     }
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th>Technician</th>
-                <th>Date</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Position</th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleAssignSortClick('technician_name')}>
+                  Technician{getAssignSortIndicator('technician_name')}
+                </th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleAssignSortClick('assignment_date')}>
+                  Date{getAssignSortIndicator('assignment_date')}
+                </th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleAssignSortClick('start_time')}>
+                  Start{getAssignSortIndicator('start_time')}
+                </th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleAssignSortClick('end_time')}>
+                  End{getAssignSortIndicator('end_time')}
+                </th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleAssignSortClick('position')}>
+                  Position{getAssignSortIndicator('position')}
+                </th>
                 <th>Hours</th>
                 <th>Rate Type</th>
                 <th>Tech Pay</th>
@@ -1157,7 +1424,7 @@ const EventDetails = ({ eventId, onBack }) => {
 
 
             <tbody>
-              {assignments.map(a => (
+              {displayedAssignments.map(a => (
                 <tr
                   key={a.id}
                   onContextMenu={e => handleContextMenu(e, a.id)}
