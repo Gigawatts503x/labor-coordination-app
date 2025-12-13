@@ -3,8 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 /**
  * EditableCell - A table cell content that becomes editable on double-click
  * Supports text, date, time, and number inputs
- * FIXED: Properly handles inline editing without affecting other cells
+ * FIXED: Properly displays value and handles inline editing without affecting other cells
  */
+
 const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -50,39 +51,35 @@ const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
 
   if (isEditing) {
     return (
-      <input
-        ref={inputRef}
-        type={type}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
-        style={{
-          width: '100%',
-          padding: '6px',
-          border: '2px solid #1a73e8',
-          borderRadius: '4px',
-          fontSize: '14px',
-          fontFamily: 'inherit',
-          boxSizing: 'border-box'
-        }}
-      />
+      <td>
+        <input
+          ref={inputRef}
+          type={type}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          style={{
+            width: '100%',
+            padding: '6px',
+            border: '2px solid #1a73e8',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box'
+          }}
+        />
+      </td>
     );
   }
 
+  // Display the actual value, or displayValue override, or dash if empty
+  const displayText = displayValue !== undefined ? displayValue : (value || '—');
+
   return (
-    <span
-      onDoubleClick={handleDoubleClick}
-      style={{
-        cursor: 'pointer',
-        userSelect: 'none',
-        display: 'block',
-        padding: '4px'
-      }}
-      title="Double-click to edit"
-    >
-      {displayValue || '—'}
-    </span>
+    <td onClick={handleDoubleClick} style={{ cursor: 'pointer' }}>
+      {displayText}
+    </td>
   );
 };
 

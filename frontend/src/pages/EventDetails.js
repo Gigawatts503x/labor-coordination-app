@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  getEvent,
-  getTechnicians,
-  bulkUpdateAssignments,
-  deleteEvent,
-  api,
-  getEventRequirementsWithCoverage,
-  createEventRequirement,
-  deleteRequirement,
-  updateAssignment
-} from '../utils/api';
+import { getEvent, getTechnicians, bulkUpdateAssignments, deleteEvent, api, getEventRequirementsWithCoverage, createEventRequirement, deleteRequirement, updateAssignment } from '../utils/api';
 import { useAssignments } from '../hooks/useAssignments';
 import EditableCell from '../components/EditableCell';
 import EditableSelectCell from '../components/EditableSelectCell';
@@ -19,7 +9,7 @@ import '../styles/requirements-table.css';
 import '../styles/requirements-form.css';
 import '../styles/assignments-table.css';
 
-const RATE_TYPES = ['hourly', 'half-day', 'full-day'];
+const RATETYPE = ['hourly', 'half-day', 'full-day'];
 const BULK_EDIT_FIELDS = ['assignment_date', 'start_time', 'end_time', 'position'];
 
 const EventDetails = ({ eventId, onBack }) => {
@@ -43,7 +33,6 @@ const EventDetails = ({ eventId, onBack }) => {
   } = useAssignments(eventId);
 
   const [assignments, setAssignments] = useState([]);
-
   useEffect(() => {
     setAssignments(hookAssignments);
   }, [hookAssignments]);
@@ -54,9 +43,9 @@ const EventDetails = ({ eventId, onBack }) => {
   const [requirements, setRequirements] = useState([]);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
   const [reqError, setReqError] = useState(null);
-
   const [reqForm, setReqForm] = useState({
     requirement_date: '',
+    requirement_end_date: '',
     room_or_location: '',
     set_time: '',
     start_time: '',
@@ -94,14 +83,14 @@ const EventDetails = ({ eventId, onBack }) => {
   // STATE - Assignment Form
   // ==========================================
   const [formData, setFormData] = useState({
-    technician_id: '',
+    technicianid: '',
     position: '',
-    hours_worked: '',
-    rate_type: 'hourly',
-    assignment_date: '',
-    start_time: '',
-    end_time: '',
-    requirement_id: ''
+    hoursworked: '',
+    ratetype: 'hourly',
+    assignmentdate: '',
+    starttime: '',
+    endtime: '',
+    requirementid: ''
   });
 
   // ==========================================
@@ -179,12 +168,9 @@ const EventDetails = ({ eventId, onBack }) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]:
-        name === 'hours_worked'
-          ? value === ''
-            ? ''
-            : parseFloat(value) || ''
-          : value
+      [name]: name === 'hoursworked'
+        ? value === '' ? '' : parseFloat(value) || ''
+        : value
     }));
   };
 
@@ -192,12 +178,9 @@ const EventDetails = ({ eventId, onBack }) => {
     const { name, value } = e.target;
     setReqForm(prev => ({
       ...prev,
-      [name]:
-        name === 'techs_needed'
-          ? value === ''
-            ? ''
-            : parseInt(value, 10) || 1
-          : value
+      [name]: name === 'techs_needed'
+        ? value === '' ? '' : parseInt(value, 10) || 1
+        : value
     }));
   };
 
@@ -223,10 +206,7 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const handleReqFilterChange = (e) => {
     const { name, value } = e.target;
-    setReqFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setReqFilters(prev => ({ ...prev, [name]: value }));
   };
 
   const clearReqFilters = () => {
@@ -246,14 +226,12 @@ const EventDetails = ({ eventId, onBack }) => {
     }
     if (reqFilters.room) {
       filtered = filtered.filter(r =>
-        r.room_or_location
-          .toLowerCase()
-          .includes(reqFilters.room.toLowerCase())
+        r.room_or_location?.toLowerCase().includes(reqFilters.room.toLowerCase())
       );
     }
     if (reqFilters.position) {
       filtered = filtered.filter(r =>
-        r.position && r.position.toLowerCase().includes(reqFilters.position.toLowerCase())
+        r.position?.toLowerCase().includes(reqFilters.position.toLowerCase())
       );
     }
 
@@ -296,10 +274,7 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const handleAssignFilterChange = (e) => {
     const { name, value } = e.target;
-    setAssignFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setAssignFilters(prev => ({ ...prev, [name]: value }));
   };
 
   const clearAssignFilters = () => {
@@ -319,12 +294,12 @@ const EventDetails = ({ eventId, onBack }) => {
     }
     if (assignFilters.technician) {
       filtered = filtered.filter(a =>
-        a.technician_name.toLowerCase().includes(assignFilters.technician.toLowerCase())
+        a.technician_name?.toLowerCase().includes(assignFilters.technician.toLowerCase())
       );
     }
     if (assignFilters.position) {
       filtered = filtered.filter(a =>
-        a.position && a.position.toLowerCase().includes(assignFilters.position.toLowerCase())
+        a.position?.toLowerCase().includes(assignFilters.position.toLowerCase())
       );
     }
 
@@ -354,12 +329,32 @@ const EventDetails = ({ eventId, onBack }) => {
   };
 
   // ==========================================
+  // HELPERS - Coverage Calculation
+  // ==========================================
+  const calculateCoverage = (requirement) => {
+    const assignedCount = assignments.filter(a => a.requirement_id === requirement.id).length;
+    const needed = requirement.techs_needed || 1;
+    return {
+      assigned: assignedCount,
+      needed: needed,
+      isFull: assignedCount >= needed,
+      text: `${assignedCount}/${needed}`
+    };
+  };
+
+  const getAssignedTechNames = (requirement) => {
+    return assignments
+      .filter(a => a.requirement_id === requirement.id)
+      .map(a => a.technician_name)
+      .join(', ') || '—';
+  };
+
+  // ==========================================
   // HANDLERS - Inline Editing
   // ==========================================
   const handleInlineEditSave = async (assignmentId, field, value) => {
     try {
       console.log(`💾 Saving ${field}:`, value, 'for assignment:', assignmentId);
-
       const assignment = assignments.find(a => a.id === assignmentId);
       if (assignment && assignment[field] === value) {
         console.log('No change detected, skipping update');
@@ -367,6 +362,7 @@ const EventDetails = ({ eventId, onBack }) => {
       }
 
       await updateAssignment(assignmentId, { [field]: value || null });
+
       console.log('✅ Update successful');
 
       setAssignments(prevAssignments =>
@@ -387,7 +383,6 @@ const EventDetails = ({ eventId, onBack }) => {
   const handleRequirementEditSave = async (requirementId, field, value) => {
     try {
       console.log(`💾 Saving requirement ${field}:`, value, 'for requirement:', requirementId);
-
       const requirement = requirements.find(r => r.id === requirementId);
       if (requirement && requirement[field] === value) {
         console.log('No change detected, skipping update');
@@ -396,6 +391,7 @@ const EventDetails = ({ eventId, onBack }) => {
 
       const fieldMap = {
         requirement_date: 'requirement_date',
+        requirement_end_date: 'requirement_end_date',
         room_or_location: 'room_or_location',
         set_time: 'set_time',
         start_time: 'start_time',
@@ -404,9 +400,7 @@ const EventDetails = ({ eventId, onBack }) => {
         position: 'position'
       };
 
-      await api.patch(`/requirements/${requirementId}`, {
-        [fieldMap[field]]: value || null
-      });
+      await api.patch(`/requirements/${requirementId}`, { [fieldMap[field]]: value || null });
 
       console.log('✅ Update successful');
 
@@ -422,80 +416,61 @@ const EventDetails = ({ eventId, onBack }) => {
   };
 
   // ==========================================
-  // HANDLERS - Refresh Requirements
-  // ==========================================
-  const refreshRequirements = async () => {
-    try {
-      const res = await getEventRequirementsWithCoverage(eventId);
-      setRequirements(res.data);
-    } catch (err) {
-      console.error('Error refreshing requirements:', err);
-    }
-  };
-
-  // ==========================================
   // HANDLERS - Assignment Operations
   // ==========================================
   const handleAddAssignment = async (e) => {
     e.preventDefault();
-    if (!formData.technician_id || !formData.rate_type) return;
+    if (!formData.technicianid || !formData.ratetype) return;
 
-    // Check for scheduling conflicts
-    const selectedTech = formData.technician_id;
-    const assignmentDate = formData.assignment_date;
-    const startTime = formData.start_time;
-    const endTime = formData.end_time;
+    const selectedTech = formData.technicianid;
+    const assignmentDate = formData.assignmentdate;
+    const startTime = formData.starttime;
+    const endTime = formData.endtime;
 
     if (assignmentDate && startTime && endTime) {
       const conflict = assignments.some(a => {
         if (a.technician_id !== selectedTech || a.assignment_date !== assignmentDate) {
           return false;
         }
-
         const existingStart = a.start_time;
         const existingEnd = a.end_time;
-
-        return startTime < existingEnd && endTime > existingStart;
+        return (startTime < existingEnd && endTime > existingStart);
       });
 
       if (conflict) {
-        alert(
-          `❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`
-        );
+        alert(`❌ Conflict! This tech is already scheduled during this time slot on ${assignmentDate}`);
         return;
       }
     }
 
-    const hours = parseFloat(formData.hours_worked || 0);
-    const tech = technicians.find(t => t.id === formData.technician_id);
+    const hours = parseFloat(formData.hoursworked || 0);
+    const tech = technicians.find(t => t.id === formData.technicianid);
 
     const data = {
-      technician_id: formData.technician_id,
+      technician_id: formData.technicianid,
       position: formData.position || (tech ? tech.position : null),
       hours_worked: hours,
-      rate_type: formData.rate_type,
+      rate_type: formData.ratetype,
       calculated_pay: 0,
       customer_bill: 0,
-      assignment_date: formData.assignment_date || null,
-      start_time: formData.start_time || null,
-      end_time: formData.end_time || null,
-      requirement_id: formData.requirement_id || null
+      assignment_date: formData.assignmentdate || null,
+      start_time: formData.starttime || null,
+      end_time: formData.endtime || null,
+      requirement_id: formData.requirementid || null
     };
 
     try {
       await addAssignment(data);
       setFormData({
-        technician_id: '',
+        technicianid: '',
         position: '',
-        hours_worked: '',
-        rate_type: 'hourly',
-        assignment_date: '',
-        start_time: '',
-        end_time: '',
-        requirement_id: ''
+        hoursworked: '',
+        ratetype: 'hourly',
+        assignmentdate: '',
+        starttime: '',
+        endtime: '',
+        requirementid: ''
       });
-
-      await refreshRequirements();
     } catch (err) {
       console.error('Failed to add assignment', err);
     }
@@ -503,25 +478,17 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this assignment?')) return;
-
     try {
       await removeAssignment(id);
-
-      await refreshRequirements();
     } catch (err) {
       console.error('Failed to delete assignment', err);
     }
   };
 
   const handleDeleteEvent = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this entire event? This cannot be undone.'
-      )
-    ) {
+    if (!window.confirm('Are you sure you want to delete this entire event? This cannot be undone.')) {
       return;
     }
-
     try {
       await deleteEvent(eventId);
       alert('Event deleted successfully');
@@ -553,11 +520,9 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const handleContextMenu = (e, assignmentId) => {
     e.preventDefault();
-
     if (!selectedAssignmentIds.includes(assignmentId)) {
       setSelectedAssignmentIds([assignmentId]);
     }
-
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -569,9 +534,7 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const openBulkEditModal = () => {
     if (contextMenu?.assignmentIds?.length) {
-      setBulkEditModal({
-        assignmentIds: contextMenu.assignmentIds
-      });
+      setBulkEditModal({ assignmentIds: contextMenu.assignmentIds });
       setBulkEditValues({
         assignment_date: '',
         start_time: '',
@@ -586,7 +549,6 @@ const EventDetails = ({ eventId, onBack }) => {
     if (!bulkEditModal?.assignmentIds?.length) return;
 
     const updates = {};
-
     BULK_EDIT_FIELDS.forEach(field => {
       if (bulkEditValues[field] !== '') {
         updates[field] = bulkEditValues[field];
@@ -599,7 +561,6 @@ const EventDetails = ({ eventId, onBack }) => {
     }
 
     const count = bulkEditModal.assignmentIds.length;
-
     if (!window.confirm(`Apply these changes to ${count} assignment(s)?`)) {
       return;
     }
@@ -634,19 +595,20 @@ const EventDetails = ({ eventId, onBack }) => {
   // ==========================================
   const handleAddRequirement = async (e) => {
     e.preventDefault();
-
     if (
       !reqForm.requirement_date ||
       !reqForm.room_or_location ||
       !reqForm.start_time ||
       !reqForm.end_time
     ) {
+      alert('Please fill in all required fields');
       return;
     }
 
     try {
       const res = await createEventRequirement(eventId, {
         requirement_date: reqForm.requirement_date,
+        requirement_end_date: reqForm.requirement_end_date,
         room_or_location: reqForm.room_or_location,
         set_time: reqForm.set_time,
         start_time: reqForm.start_time,
@@ -657,14 +619,14 @@ const EventDetails = ({ eventId, onBack }) => {
       });
 
       setRequirements([...requirements, res.data]);
-
       setReqForm({
-        requirement_date: reqForm.requirement_date,
-        room_or_location: reqForm.room_or_location,
-        set_time: reqForm.set_time,
-        start_time: reqForm.start_time,
-        end_time: reqForm.end_time,
-        strike_time: reqForm.strike_time,
+        requirement_date: '',
+        requirement_end_date: '',
+        room_or_location: '',
+        set_time: '',
+        start_time: '',
+        end_time: '',
+        strike_time: '',
         position: '',
         techs_needed: 1
       });
@@ -676,33 +638,20 @@ const EventDetails = ({ eventId, onBack }) => {
 
   const handleAssignRequirement = (requirement) => {
     setFormData({
-      technician_id: '',
+      technicianid: '',
       position: requirement.position || '',
-      hours_worked: requirement.techs_needed || '',
-      rate_type: 'full-day',
-      assignment_date: requirement.requirement_date || '',
-      start_time: requirement.set_time || '',
-      end_time: requirement.strike_time || '',
-      requirement_id: requirement.id
+      hoursworked: requirement.techs_needed || '',
+      ratetype: 'full-day',
+      assignmentdate: requirement.requirement_date || '',
+      starttime: requirement.set_time || '',
+      endtime: requirement.strike_time || '',
+      requirementid: requirement.id
     });
-
-    setTimeout(() => {
-      const element = document.querySelector('.assignment-form');
-      if (element) {
-        const elementHeight = element.offsetHeight;
-        const elementTop = element.getBoundingClientRect().top + window.scrollY;
-        // Position so the form is at the bottom of the viewport (with 20px margin from bottom)
-        window.scrollTo({
-          top: elementTop - (window.innerHeight - elementHeight - 20),
-          behavior: 'smooth'
-        });
-      }
-    }, 100);
+    document.querySelector('.assignment-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleDeleteRequirement = async (id) => {
     if (!window.confirm('Delete this requirement?')) return;
-
     try {
       await deleteRequirement(id);
       setRequirements(requirements.filter(r => r.id !== id));
@@ -720,79 +669,44 @@ const EventDetails = ({ eventId, onBack }) => {
   // ==========================================
   // LOADING STATES
   // ==========================================
-  if (loadingEvent)
-    return <div className="event-details">Loading event…</div>;
-
-  if (error)
-    return <div className="event-details error">Error: {error}</div>;
-
-  if (!event)
-    return <div className="event-details">Event not found.</div>;
+  if (loadingEvent) return <div className="event-details loading">Loading event...</div>;
+  if (error) return <div className="event-details error">Error: {error}</div>;
+  if (!event) return <div className="event-details error">Event not found</div>;
 
   const filteredRequirements = getFilteredAndSortedRequirements();
   const filteredAssignments = getFilteredAndSortedAssignments();
 
   return (
     <div className="event-details">
-      <button className="btn btn-secondary" onClick={onBack}>
-        ← Back to Events
-      </button>
-
-      <header className="event-header">
+      {/* Header */}
+      <div className="event-header">
         <div>
           <h1>{event.name}</h1>
-          <p>
-            <strong>Client:</strong> {event.client_name}
-          </p>
-          {event.client_contact && (
-            <p>
-              <strong>Contact:</strong> {event.client_contact}
-            </p>
-          )}
-          {event.client_phone && (
-            <p>
-              <strong>Phone:</strong> {event.client_phone}
-            </p>
-          )}
-          {event.client_email && (
-            <p>
-              <strong>Email:</strong> {event.client_email}
-            </p>
-          )}
+          <p><strong>Client:</strong> {event.client_name}</p>
+          <p><strong>Contact:</strong> {event.client_contact}</p>
+          <p><strong>Phone:</strong> {event.client_phone}</p>
+          <p><strong>Email:</strong> {event.client_email}</p>
+          <p><strong>Address:</strong> {event.client_address}</p>
+          <p><strong>PO#:</strong> {event.po_number}</p>
+          <p><strong>Dates:</strong> {event.start_date} to {event.end_date}</p>
         </div>
-
-        <div className="event-summary">
-          <h3>Totals</h3>
-          <p>
-            <strong>Tech Pay:</strong> ${totalPay.toFixed(2)}
-          </p>
-          <p>
-            <strong>Customer Bill:</strong> ${totalBill.toFixed(2)}
-          </p>
+        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+          <button onClick={onBack} className="btn btn-secondary">← Back</button>
+          <button onClick={handleDeleteEvent} className="btn btn-delete">Delete Event</button>
         </div>
-      </header>
-
-      <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', marginBottom: '20px' }}>
-        <button
-          className="btn btn-secondary"
-          onClick={() => setSettingsModal(true)}
-        >
-          ⚙️ Settings
-        </button>
-        <button className="btn btn-delete" onClick={handleDeleteEvent}>
-          Delete Event
-        </button>
       </div>
 
+      {/* REQUIREMENTS SECTION */}
       <section className="requirements-section">
-        <h2>Requirements (Rooms / Slots)</h2>
+        <h2>Requirements</h2>
 
-        {reqError && <div className="error-message">{reqError}</div>}
-
-        <form className="requirement-form" onSubmit={handleAddRequirement}>
+        {/* FORM */}
+        <form onSubmit={handleAddRequirement} className="requirement-form">
+          <h3>Add Requirement</h3>
+          
           <div className="form-row">
             <div className="form-group">
-              <label>Date *</label>
+              <label>Date</label>
               <input
                 type="date"
                 name="requirement_date"
@@ -801,20 +715,28 @@ const EventDetails = ({ eventId, onBack }) => {
                 required
               />
             </div>
-
             <div className="form-group">
-              <label>Room / Location *</label>
+              <label>End Date</label>
+              <input
+                type="date"
+                name="requirement_end_date"
+                value={reqForm.requirement_end_date}
+                onChange={handleReqFormChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Room/Location</label>
               <input
                 type="text"
                 name="room_or_location"
+                placeholder="e.g., Main Stage"
                 value={reqForm.room_or_location}
                 onChange={handleReqFormChange}
                 required
               />
             </div>
-
             <div className="form-group">
-              <label>Set</label>
+              <label>Set Time</label>
               <input
                 type="time"
                 name="set_time"
@@ -822,9 +744,11 @@ const EventDetails = ({ eventId, onBack }) => {
                 onChange={handleReqFormChange}
               />
             </div>
+          </div>
 
+          <div className="form-row">
             <div className="form-group">
-              <label>Start Time *</label>
+              <label>Start Time</label>
               <input
                 type="time"
                 name="start_time"
@@ -833,9 +757,8 @@ const EventDetails = ({ eventId, onBack }) => {
                 required
               />
             </div>
-
             <div className="form-group">
-              <label>End Time *</label>
+              <label>End Time</label>
               <input
                 type="time"
                 name="end_time"
@@ -844,9 +767,8 @@ const EventDetails = ({ eventId, onBack }) => {
                 required
               />
             </div>
-
             <div className="form-group">
-              <label>Strike</label>
+              <label>Strike Time</label>
               <input
                 type="time"
                 name="strike_time"
@@ -854,18 +776,19 @@ const EventDetails = ({ eventId, onBack }) => {
                 onChange={handleReqFormChange}
               />
             </div>
-
             <div className="form-group">
               <label>Position</label>
               <input
                 type="text"
                 name="position"
+                placeholder="e.g., A2, Cam Op"
                 value={reqForm.position}
                 onChange={handleReqFormChange}
-                placeholder="e.g. A2, Cam Op"
               />
             </div>
+          </div>
 
+          <div className="form-row">
             <div className="form-group">
               <label>Techs Needed</label>
               <input
@@ -876,239 +799,225 @@ const EventDetails = ({ eventId, onBack }) => {
                 onChange={handleReqFormChange}
               />
             </div>
+            <button type="submit" className="btn btn-success">Add Requirement</button>
           </div>
-
-          <button type="submit" className="btn btn-success">
-            + Add Requirement
-          </button>
         </form>
 
-        {loadingRequirements ? (
-          <p>Loading requirements...</p>
-        ) : filteredRequirements.length === 0 ? (
-          <p className="empty-state">No requirements yet for this event.</p>
+        {/* FILTER CONTROLS */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <input
+            type="date"
+            name="dateFrom"
+            value={reqFilters.dateFrom}
+            onChange={handleReqFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="date"
+            name="dateTo"
+            value={reqFilters.dateTo}
+            onChange={handleReqFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="text"
+            name="room"
+            placeholder="Filter by room..."
+            value={reqFilters.room}
+            onChange={handleReqFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="text"
+            name="position"
+            placeholder="Filter by position..."
+            value={reqFilters.position}
+            onChange={handleReqFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <button onClick={clearReqFilters} className="btn btn-secondary">Clear</button>
+        </div>
+
+        {/* REQUIREMENTS TABLE */}
+        {filteredRequirements.length === 0 ? (
+          <div className="requirements-empty-state">No requirements yet.</div>
         ) : (
-          <>
-            <div className="filter-controls">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date From</label>
-                  <input
-                    type="date"
-                    name="dateFrom"
-                    value={reqFilters.dateFrom}
-                    onChange={handleReqFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Date To</label>
-                  <input
-                    type="date"
-                    name="dateTo"
-                    value={reqFilters.dateTo}
-                    onChange={handleReqFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Room/Location</label>
-                  <input
-                    type="text"
-                    name="room"
-                    placeholder="Search..."
-                    value={reqFilters.room}
-                    onChange={handleReqFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Position</label>
-                  <input
-                    type="text"
-                    name="position"
-                    placeholder="Search..."
-                    value={reqFilters.position}
-                    onChange={handleReqFilterChange}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={clearReqFilters}
-                >
-                  Clear Filters
-                </button>
-              </div>
-
-              <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                Showing {filteredRequirements.length} of {requirements.length} requirements
-              </p>
-            </div>
-
-            <div className="table-container">
-              <table className="assignments-table">
-                <thead>
-                  <tr>
-                    <th
-                      onClick={() => handleReqSortClick('requirement_date')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Date{getReqSortIndicator('requirement_date')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('room_or_location')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Room{getReqSortIndicator('room_or_location')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('set_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Set{getReqSortIndicator('set_time')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('start_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Start{getReqSortIndicator('start_time')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('end_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      End{getReqSortIndicator('end_time')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('strike_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Strike{getReqSortIndicator('strike_time')}
-                    </th>
-                    <th
-                      onClick={() => handleReqSortClick('position')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Position{getReqSortIndicator('position')}
-                    </th>
-                    <th>Coverage</th>
-                    <th>Assigned Techs</th>
-                    <th>Assign</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredRequirements.map(r => {
-                    const assignedNames = r.assigned_techs
-                      ? r.assigned_techs.map(t => t.name).join(', ')
-                      : '';
-                    const coverageStatus = `${r.assigned_count || 0}/${r.techs_needed}`;
-
-                    const isFull = r.assigned_count >= r.techs_needed;
-
-                    return (
-                      <tr key={r.id}>
-                        <td>{r.requirement_date || '—'}</td>
-                        <td>{r.room_or_location}</td>
-                        <td>{r.set_time || '—'}</td>
-                        <td>{r.start_time || '—'}</td>
-                        <td>{r.end_time || '—'}</td>
-                        <td>{r.strike_time || '—'}</td>
-                        <td>{r.position || '—'}</td>
-                        <td>
-                          <strong>{coverageStatus}</strong>
-                        </td>
-                        <td>{assignedNames ? assignedNames : '—'}</td>
-                        <td>
-                          {!isFull && (
-                            <button
-                              className="btn btn-small btn-success"
-                              onClick={() => handleAssignRequirement(r)}
-                            >
-                              Assign
-                            </button>
-                          )}
-                        </td>
-                        <td>
+          <div className="requirements-table-container">
+            <table className="requirements-table">
+              <thead>
+                <tr>
+                  <th onClick={() => handleReqSortClick('requirement_date')} style={{ cursor: 'pointer' }}>
+                    Date{getReqSortIndicator('requirement_date')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('requirement_end_date')} style={{ cursor: 'pointer' }}>
+                    End Date{getReqSortIndicator('requirement_end_date')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('room_or_location')} style={{ cursor: 'pointer' }}>
+                    Room{getReqSortIndicator('room_or_location')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('set_time')} style={{ cursor: 'pointer' }}>
+                    Set{getReqSortIndicator('set_time')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('start_time')} style={{ cursor: 'pointer' }}>
+                    Start{getReqSortIndicator('start_time')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('end_time')} style={{ cursor: 'pointer' }}>
+                    End{getReqSortIndicator('end_time')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('strike_time')} style={{ cursor: 'pointer' }}>
+                    Strike{getReqSortIndicator('strike_time')}
+                  </th>
+                  <th onClick={() => handleReqSortClick('position')} style={{ cursor: 'pointer' }}>
+                    Position{getReqSortIndicator('position')}
+                  </th>
+                  <th>Coverage</th>
+                  <th>Assigned Techs</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRequirements.map(req => {
+                  const coverage = calculateCoverage(req);
+                  const assignedNames = getAssignedTechNames(req);
+                  
+                  return (
+                    <tr key={req.id}>
+                      <td>
+                        <EditableCell
+                          value={req.requirement_date}
+                          type="date"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'requirement_date', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.requirement_end_date || ''}
+                          type="date"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'requirement_end_date', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.room_or_location}
+                          onSave={(value) => handleRequirementEditSave(req.id, 'room_or_location', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.set_time || ''}
+                          type="time"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'set_time', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.start_time}
+                          type="time"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'start_time', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.end_time}
+                          type="time"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'end_time', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.strike_time || ''}
+                          type="time"
+                          onSave={(value) => handleRequirementEditSave(req.id, 'strike_time', value)}
+                        />
+                      </td>
+                      <td>
+                        <EditableCell
+                          value={req.position || ''}
+                          onSave={(value) => handleRequirementEditSave(req.id, 'position', value)}
+                        />
+                      </td>
+                      <td style={{ fontWeight: 'bold', textAlign: 'center' }}>
+                        {coverage.text}
+                      </td>
+                      <td>{assignedNames}</td>
+                      <td>
+                        {!coverage.isFull && (
                           <button
-                            className="btn btn-small btn-delete"
-                            onClick={() => handleDeleteRequirement(r.id)}
+                            type="button"
+                            className="btn-small btn-success"
+                            onClick={() => {
+                              console.log('🔴 Assign clicked for req:', req.id, req);
+                              handleAssignRequirement(req);
+                            }}
+                            title="Assign a technician to this requirement"
+                            style={{ cursor: 'pointer', zIndex: 10, position: 'relative' }}
                           >
-                            Delete
+                            Assign
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-small btn-delete"
+                          onClick={() => handleDeleteRequirement(req.id)}
+                          style={{ marginLeft: coverage.isFull ? '0' : '4px', cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
+      {/* ASSIGNMENTS SECTION */}
       <section className="assignments-section">
         <h2>Assignments</h2>
 
-        <form className="assignment-form" onSubmit={handleAddAssignment}>
+        {/* FORM */}
+        <form onSubmit={handleAddAssignment} className="assignment-form">
+          <h3>Add Assignment</h3>
+          
           <div className="form-row">
             <div className="form-group">
-              <label>Technician *</label>
-              <select
-                name="technician_id"
-                value={formData.technician_id}
-                onChange={handleFormChange}
-                required
-              >
-                <option value="">Select technician</option>
-                {technicians.map(tech => (
-                  <option key={tech.id} value={tech.id}>
-                    {tech.name} ({tech.position || 'No primary position'})
-                  </option>
+              <label>Technician</label>
+              <select name="technicianid" value={formData.technicianid} onChange={handleFormChange} required>
+                <option value="">-- Select --</option>
+                {technicians.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
-
             <div className="form-group">
               <label>Position</label>
               <input
                 type="text"
                 name="position"
+                placeholder="e.g., A1, A2, Gaffer"
                 value={formData.position}
                 onChange={handleFormChange}
-                placeholder="Leave blank to use tech's primary position"
               />
             </div>
-
+            <div className="form-group">
+              <label>Rate Type</label>
+              <select name="ratetype" value={formData.ratetype} onChange={handleFormChange}>
+                {RATETYPE.map(rt => (
+                  <option key={rt} value={rt}>{rt}</option>
+                ))}
+              </select>
+            </div>
             <div className="form-group">
               <label>Hours</label>
               <input
                 type="number"
-                name="hours_worked"
-                step="0.25"
-                min="0"
-                value={formData.hours_worked}
-                onChange={handleFormChange}
+                name="hoursworked"
                 placeholder="0.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Rate Type</label>
-              <select
-                name="rate_type"
-                value={formData.rate_type}
+                value={formData.hoursworked}
                 onChange={handleFormChange}
-              >
-                {RATE_TYPES.map(rt => (
-                  <option key={rt} value={rt}>
-                    {rt}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -1117,440 +1026,250 @@ const EventDetails = ({ eventId, onBack }) => {
               <label>Date</label>
               <input
                 type="date"
-                name="assignment_date"
-                value={formData.assignment_date}
+                name="assignmentdate"
+                value={formData.assignmentdate}
                 onChange={handleFormChange}
               />
             </div>
-
             <div className="form-group">
               <label>Start Time</label>
               <input
                 type="time"
-                name="start_time"
-                value={formData.start_time}
+                name="starttime"
+                value={formData.starttime}
                 onChange={handleFormChange}
               />
             </div>
-
             <div className="form-group">
               <label>End Time</label>
               <input
                 type="time"
-                name="end_time"
-                value={formData.end_time}
+                name="endtime"
+                value={formData.endtime}
                 onChange={handleFormChange}
               />
             </div>
-
-            <div className="form-group">
-              <label>Requirement (Optional)</label>
-              <select
-                name="requirement_id"
-                value={formData.requirement_id}
-                onChange={handleFormChange}
-              >
-                <option value="">-- Requirement (optional) --</option>
-                {requirements.map(req => (
-                  <option key={req.id} value={req.id}>
-                    {req.requirement_date} – {req.room_or_location} – {req.position || 'Any'} (Techs needed: {req.techs_needed})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <button type="submit" className="btn btn-success">Add Assignment</button>
           </div>
-
-          <button type="submit" className="btn btn-success">
-            + Add Assignment
-          </button>
         </form>
 
-        {loadingAssignments ? (
-          <p>Loading assignments…</p>
-        ) : filteredAssignments.length === 0 ? (
-          <p className="empty-state">No assignments yet. Add one above.</p>
+        {/* FILTER CONTROLS */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <input
+            type="date"
+            name="dateFrom"
+            value={assignFilters.dateFrom}
+            onChange={handleAssignFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="date"
+            name="dateTo"
+            value={assignFilters.dateTo}
+            onChange={handleAssignFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="text"
+            name="technician"
+            placeholder="Filter by tech..."
+            value={assignFilters.technician}
+            onChange={handleAssignFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <input
+            type="text"
+            name="position"
+            placeholder="Filter by position..."
+            value={assignFilters.position}
+            onChange={handleAssignFilterChange}
+            style={{ flex: 1, minWidth: '120px' }}
+          />
+          <button onClick={clearAssignFilters} className="btn btn-secondary">Clear</button>
+        </div>
+
+        {/* ASSIGNMENTS TABLE */}
+        {filteredAssignments.length === 0 ? (
+          <div className="requirements-empty-state">No assignments yet. Add one above.</div>
         ) : (
-          <>
-            <div className="filter-controls">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date From</label>
-                  <input
-                    type="date"
-                    name="dateFrom"
-                    value={assignFilters.dateFrom}
-                    onChange={handleAssignFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Date To</label>
-                  <input
-                    type="date"
-                    name="dateTo"
-                    value={assignFilters.dateTo}
-                    onChange={handleAssignFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Technician</label>
-                  <input
-                    type="text"
-                    name="technician"
-                    placeholder="Search..."
-                    value={assignFilters.technician}
-                    onChange={handleAssignFilterChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Position</label>
-                  <input
-                    type="text"
-                    name="position"
-                    placeholder="Search..."
-                    value={assignFilters.position}
-                    onChange={handleAssignFilterChange}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={clearAssignFilters}
-                >
-                  Clear Filters
-                </button>
-              </div>
-
-              <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                Showing {filteredAssignments.length} of {assignments.length} assignments
-              </p>
-            </div>
-
-            <div className="table-container">
-              <table className="assignments-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '30px' }}>
+          <div className="assignments-table-container">
+            <table className="assignments-table">
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      checked={selectedAssignmentIds.length === assignments.length && assignments.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th onClick={() => handleAssignSortClick('technician_name')} style={{ cursor: 'pointer' }}>
+                    Technician{getAssignSortIndicator('technician_name')}
+                  </th>
+                  <th onClick={() => handleAssignSortClick('assignment_date')} style={{ cursor: 'pointer' }}>
+                    Date{getAssignSortIndicator('assignment_date')}
+                  </th>
+                  <th onClick={() => handleAssignSortClick('start_time')} style={{ cursor: 'pointer' }}>
+                    Start{getAssignSortIndicator('start_time')}
+                  </th>
+                  <th onClick={() => handleAssignSortClick('end_time')} style={{ cursor: 'pointer' }}>
+                    End{getAssignSortIndicator('end_time')}
+                  </th>
+                  <th onClick={() => handleAssignSortClick('position')} style={{ cursor: 'pointer' }}>
+                    Position{getAssignSortIndicator('position')}
+                  </th>
+                  <th>Hours</th>
+                  <th>Rate Type</th>
+                  <th>Tech Pay</th>
+                  <th>Customer Bill</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAssignments.map(a => (
+                  <tr key={a.id} style={{ backgroundColor: selectedAssignmentIds.includes(a.id) ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
+                    <td>
                       <input
                         type="checkbox"
-                        checked={
-                          selectedAssignmentIds.length > 0 &&
-                          selectedAssignmentIds.length ===
-                            filteredAssignments.length
-                        }
-                        onChange={toggleSelectAll}
+                        checked={selectedAssignmentIds.includes(a.id)}
+                        onChange={() => toggleAssignmentSelect(a.id)}
+                        onContextMenu={(e) => handleContextMenu(e, a.id)}
                       />
-                    </th>
-                    <th
-                      onClick={() => handleAssignSortClick('technician_name')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Technician{getAssignSortIndicator('technician_name')}
-                    </th>
-                    <th
-                      onClick={() => handleAssignSortClick('assignment_date')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Date{getAssignSortIndicator('assignment_date')}
-                    </th>
-                    <th
-                      onClick={() => handleAssignSortClick('start_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Start{getAssignSortIndicator('start_time')}
-                    </th>
-                    <th
-                      onClick={() => handleAssignSortClick('end_time')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      End{getAssignSortIndicator('end_time')}
-                    </th>
-                    <th
-                      onClick={() => handleAssignSortClick('position')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Position{getAssignSortIndicator('position')}
-                    </th>
-                    <th>Hours</th>
-                    <th>Rate Type</th>
-                    <th>Tech Pay</th>
-                    <th>Customer Bill</th>
-                    <th>Actions</th>
+                    </td>
+                    <td>{a.technician_name}</td>
+                    <td>
+                      <EditableCell
+                        value={a.assignment_date || ''}
+                        type="date"
+                        onSave={(value) => handleInlineEditSave(a.id, 'assignment_date', value)}
+                      />
+                    </td>
+                    <td>
+                      <EditableCell
+                        value={a.start_time || ''}
+                        type="time"
+                        onSave={(value) => handleInlineEditSave(a.id, 'start_time', value)}
+                      />
+                    </td>
+                    <td>
+                      <EditableCell
+                        value={a.end_time || ''}
+                        type="time"
+                        onSave={(value) => handleInlineEditSave(a.id, 'end_time', value)}
+                      />
+                    </td>
+                    <td>
+                      <EditableCell
+                        value={a.position || ''}
+                        onSave={(value) => handleInlineEditSave(a.id, 'position', value)}
+                      />
+                    </td>
+                    <td>
+                      <EditableCell
+                        value={a.hours_worked?.toString() || '0'}
+                        type="number"
+                        onSave={(value) => handleInlineEditSave(a.id, 'hours_worked', parseFloat(value) || 0)}
+                      />
+                    </td>
+                    <td>
+                      <EditableSelectCell
+                        value={a.rate_type}
+                        options={RATETYPE}
+                        onSave={(value) => handleInlineEditSave(a.id, 'rate_type', value)}
+                      />
+                    </td>
+                    <td>${(a.calculated_pay || 0).toFixed(2)}</td>
+                    <td>${(a.customer_bill || 0).toFixed(2)}</td>
+                    <td>
+                      <button className="btn-small btn-delete" onClick={() => handleDelete(a.id)}>
+                        Delete
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-
-                <tbody>
-                  {filteredAssignments.map(a => (
-                    <tr
-                      key={a.id}
-                      onContextMenu={(e) => handleContextMenu(e, a.id)}
-                      style={{
-                        backgroundColor: selectedAssignmentIds.includes(a.id)
-                          ? '#f9f9f9'
-                          : 'transparent'
-                      }}
-                    >
-                      <td style={{ width: '30px' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedAssignmentIds.includes(a.id)}
-                          onChange={() => toggleAssignmentSelect(a.id)}
-                        />
-                      </td>
-                      <td>{a.technician_name}</td>
-                      <td>
-                        <EditableCell
-                          value={a.assignment_date || ''}
-                          type="date"
-                          displayValue={a.assignment_date || '—'}
-                          onSave={(value) =>
-                            handleInlineEditSave(a.id, 'assignment_date', value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <EditableCell
-                          value={a.start_time || ''}
-                          type="time"
-                          displayValue={a.start_time || '—'}
-                          onSave={(value) =>
-                            handleInlineEditSave(a.id, 'start_time', value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <EditableCell
-                          value={a.end_time || ''}
-                          type="time"
-                          displayValue={a.end_time || '—'}
-                          onSave={(value) =>
-                            handleInlineEditSave(a.id, 'end_time', value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <EditableCell
-                          value={a.position || ''}
-                          type="text"
-                          displayValue={a.position || '—'}
-                          onSave={(value) =>
-                            handleInlineEditSave(a.id, 'position', value)
-                          }
-                        />
-                      </td>
-                      <td>{a.hours_worked}</td>
-                      <td>{a.rate_type}</td>
-                      <td>${(a.calculated_pay || 0).toFixed(2)}</td>
-                      <td>${(a.customer_bill || 0).toFixed(2)}</td>
-                      <td>
-                        <button
-                          className="btn btn-small btn-delete"
-                          onClick={() => handleDelete(a.id)}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ marginTop: '20px', fontWeight: 'bold', fontSize: '16px' }}>
-              <p>
-                <strong>Total Tech Pay:</strong> ${totalPay.toFixed(2)}
-              </p>
-              <p>
-                <strong>Total Customer Bill:</strong> ${totalBill.toFixed(2)}
-              </p>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        {contextMenu && (
-          <div
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
+        {/* TOTALS */}
+        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+          <strong>Total Tech Pay:</strong> ${totalPay.toFixed(2)}&nbsp;&nbsp;&nbsp;
+          <strong>Total Customer Bill:</strong> ${totalBill.toFixed(2)}
+        </div>
+
+        {/* BULK EDIT MODAL */}
+        {bulkEditModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
               backgroundColor: 'white',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-              zIndex: 1000,
-              minWidth: '150px'
-            }}
-          >
+              padding: '24px',
+              borderRadius: '8px',
+              maxWidth: '400px',
+              width: '90%'
+            }}>
+              <h3>Bulk Edit Assignments</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <label>Date</label>
+                <input type="date" name="assignment_date" value={bulkEditValues.assignment_date} onChange={handleBulkEditValueChange} />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label>Start Time</label>
+                <input type="time" name="start_time" value={bulkEditValues.start_time} onChange={handleBulkEditValueChange} />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label>End Time</label>
+                <input type="time" name="end_time" value={bulkEditValues.end_time} onChange={handleBulkEditValueChange} />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label>Position</label>
+                <input type="text" name="position" value={bulkEditValues.position} onChange={handleBulkEditValueChange} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setBulkEditModal(null)} className="btn btn-secondary">Cancel</button>
+                <button onClick={handleBulkEditSubmit} className="btn btn-success">Apply</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CONTEXT MENU */}
+        {contextMenu && (
+          <div style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: 'white',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            zIndex: 1001,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}>
             <button
               onClick={openBulkEditModal}
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '10px 15px',
+                padding: '8px 16px',
                 border: 'none',
-                backgroundColor: 'transparent',
+                background: 'none',
                 textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                transition: 'background-color 0.2s'
+                cursor: 'pointer'
               }}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = '#f5f5f5')}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
             >
-              📝 Bulk Edit
+              Bulk Edit Selected
             </button>
-          </div>
-        )}
-
-        {bulkEditModal && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2000
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: 'white',
-                padding: '30px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-                maxWidth: '500px',
-                width: '90%'
-              }}
-            >
-              <h3>Bulk Edit Assignments</h3>
-              <p>
-                Edit {bulkEditModal.assignmentIds.length} selected assignment(s)
-              </p>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date</label>
-                  <input
-                    type="date"
-                    name="assignment_date"
-                    value={bulkEditValues.assignment_date}
-                    onChange={handleBulkEditValueChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input
-                    type="time"
-                    name="start_time"
-                    value={bulkEditValues.start_time}
-                    onChange={handleBulkEditValueChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>End Time</label>
-                  <input
-                    type="time"
-                    name="end_time"
-                    value={bulkEditValues.end_time}
-                    onChange={handleBulkEditValueChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Position</label>
-                  <input
-                    type="text"
-                    name="position"
-                    value={bulkEditValues.position}
-                    onChange={handleBulkEditValueChange}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  justifyContent: 'flex-end',
-                  marginTop: '20px'
-                }}
-              >
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setBulkEditModal(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-success"
-                  onClick={handleBulkEditSubmit}
-                >
-                  Apply Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {settingsModal && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2000
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: 'white',
-                padding: '30px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-                maxWidth: '500px',
-                width: '90%'
-              }}
-            >
-              <h3>Event Settings</h3>
-
-              <div style={{ marginTop: '20px' }}>
-                <p>
-                  <strong>Settings are read-only for now.</strong> Update in the main settings area.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  marginTop: '20px'
-                }}
-              >
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setSettingsModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </section>

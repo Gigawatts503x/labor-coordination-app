@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
-
 import {
   getEventAssignments,
   createEventAssignment,
   updateAssignment,
+  patchAssignment,
   deleteAssignment
 } from '../utils/api';
 
+/**
+ * Hook for managing event assignments with granular update support
+ * 
+ * Features:
+ * - Fetch assignments for an event
+ * - Add new assignment
+ * - Remove assignment
+ * - Update single field (patch) for inline cell edits
+ * - Update full assignment
+ * - Refresh assignments from server
+ */
 export const useAssignments = (eventId) => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Initial fetch
   useEffect(() => {
     const fetchAssignments = async () => {
       if (!eventId) return;
@@ -28,6 +40,9 @@ export const useAssignments = (eventId) => {
     fetchAssignments();
   }, [eventId]);
 
+  /**
+   * Refresh assignments from server
+   */
   const refreshAssignments = async () => {
     if (!eventId) return;
     try {
@@ -38,6 +53,10 @@ export const useAssignments = (eventId) => {
     }
   };
 
+  /**
+   * Add a new assignment to the event
+   * @param {object} data - Assignment data (technician_id, position, hours_worked, rate_type, etc.)
+   */
   const addAssignment = async (data) => {
     try {
       const response = await createEventAssignment(eventId, data);
@@ -49,6 +68,10 @@ export const useAssignments = (eventId) => {
     }
   };
 
+  /**
+   * Remove an assignment
+   * @param {string} id - Assignment ID
+   */
   const removeAssignment = async (id) => {
     try {
       await deleteAssignment(id);
@@ -59,9 +82,59 @@ export const useAssignments = (eventId) => {
     }
   };
 
+  /**
+   * Update a single field on an assignment (PATCH)
+   * Used for inline cell edits - sends only changed field
+   * 
+   * @param {string} id - Assignment ID
+   * @param {object} updates - Object with field(s) to update
+   * @example
+   * updateAssignmentField('assign-123', { hours_worked: 8 })
+   * updateAssignmentField('assign-123', { position: 'Spotlight Op', hours_worked: 8 })
+   */
+  const updateAssignmentField = async (id, updates) => {
+    try {
+      const response = await patchAssignment(id, updates);
+      setAssignments(assignments.map(a =>
+        a.id === id ? { ...a, ...response.data } : a
+      ));
+      return response.data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  /**
+   * Update full assignment (PUT)
+   * For complete record updates
+   * 
+   * @param {string} id - Assignment ID
+   * @param {object} updates - Complete assignment object
+   */
+  const updateAssignmentFull = async (id, updates) => {
+    try {
+      const response = await updateAssignment(id, updates);
+      setAssignments(assignments.map(a =>
+        a.id === id ? { ...a, ...response.data } : a
+      ));
+      return response.data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  /**
+   * Optimistic local update (no API call)
+   * Used for immediate UI feedback before async operation
+   * 
+   * @param {string} id - Assignment ID
+   * @param {object} updates - Partial updates
+   */
   const updateAssignmentLocal = async (id, updates) => {
     try {
-      setAssignments(assignments.map(a => 
+      setAssignments(assignments.map(a =>
         a.id === id ? { ...a, ...updates } : a
       ));
       return true;
@@ -71,13 +144,15 @@ export const useAssignments = (eventId) => {
     }
   };
 
-  return { 
-    assignments, 
-    loading, 
-    error, 
-    addAssignment, 
-    removeAssignment, 
-    refreshAssignments,
-    updateAssignmentLocal 
+  return {
+    assignments,
+    loading,
+    error,
+    addAssignment,
+    removeAssignment,
+    updateAssignmentField,    // ✅ NEW: For inline cell edits (PATCH)
+    updateAssignmentFull,     // ✅ NEW: For full updates (PUT)
+    updateAssignmentLocal,    // Optimistic local update
+    refreshAssignments
   };
 };

@@ -11,18 +11,19 @@ const router = express.Router();
 router.get('/events/:eventId/requirements/with-coverage', async (req, res, next) => {
   try {
     const { eventId } = req.params;
+
     const requirements = await query(
       `SELECT
         er.*,
         COUNT(DISTINCT ea.id) as assigned_count,
         GROUP_CONCAT(DISTINCT t.id) as assigned_tech_ids,
         GROUP_CONCAT(DISTINCT t.name) as assigned_tech_names
-       FROM event_requirements er
-       LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
-       LEFT JOIN technicians t ON t.id = ea.technician_id
-       WHERE er.event_id = ?
-       GROUP BY er.id
-       ORDER BY er.start_time ASC`,
+      FROM event_requirements er
+      LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
+      LEFT JOIN technicians t ON t.id = ea.technician_id
+      WHERE er.event_id = ?
+      GROUP BY er.id
+      ORDER BY er.start_time ASC`,
       [eventId]
     );
 
@@ -55,8 +56,10 @@ router.post('/events/:eventId/requirements', async (req, res, next) => {
   try {
     const { eventId } = req.params;
     const id = uuid();
+
     const {
       requirement_date,
+      requirement_end_date,
       room_or_location,
       set_time,
       start_time,
@@ -68,14 +71,15 @@ router.post('/events/:eventId/requirements', async (req, res, next) => {
 
     await run(
       `INSERT INTO event_requirements
-       (id, event_id, requirement_date, room_or_location,
-        set_time, start_time, end_time, strike_time,
-        position, techs_needed)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, event_id, requirement_date, requirement_end_date, room_or_location,
+       set_time, start_time, end_time, strike_time,
+       position, techs_needed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         eventId,
         requirement_date || null,
+        requirement_end_date || null,
         room_or_location || null,
         set_time || null,
         start_time || null,
@@ -89,10 +93,10 @@ router.post('/events/:eventId/requirements', async (req, res, next) => {
     const [requirement] = await query(
       `SELECT er.*,
         COUNT(ea.id) as assigned_techs
-       FROM event_requirements er
-       LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
-       WHERE er.id = ?
-       GROUP BY er.id`,
+      FROM event_requirements er
+      LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
+      WHERE er.id = ?
+      GROUP BY er.id`,
       [id]
     );
 
@@ -103,14 +107,108 @@ router.post('/events/:eventId/requirements', async (req, res, next) => {
 });
 
 /**
+ * PATCH /api/requirements/:id
+ * Update a requirement (individual fields)
+ */
+router.patch('/requirements/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      requirement_date,
+      requirement_end_date,
+      room_or_location,
+      set_time,
+      start_time,
+      end_time,
+      strike_time,
+      position,
+      techs_needed
+    } = req.body;
+
+    // Build dynamic UPDATE based on which fields are provided
+    const updates = [];
+    const values = [];
+
+    if (requirement_date !== undefined) {
+      updates.push('requirement_date = ?');
+      values.push(requirement_date || null);
+    }
+    if (requirement_end_date !== undefined) {
+      updates.push('requirement_end_date = ?');
+      values.push(requirement_end_date || null);
+    }
+    if (room_or_location !== undefined) {
+      updates.push('room_or_location = ?');
+      values.push(room_or_location || null);
+    }
+    if (set_time !== undefined) {
+      updates.push('set_time = ?');
+      values.push(set_time || null);
+    }
+    if (start_time !== undefined) {
+      updates.push('start_time = ?');
+      values.push(start_time || null);
+    }
+    if (end_time !== undefined) {
+      updates.push('end_time = ?');
+      values.push(end_time || null);
+    }
+    if (strike_time !== undefined) {
+      updates.push('strike_time = ?');
+      values.push(strike_time || null);
+    }
+    if (position !== undefined) {
+      updates.push('position = ?');
+      values.push(position || null);
+    }
+    if (techs_needed !== undefined) {
+      updates.push('techs_needed = ?');
+      values.push(techs_needed || 1);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
+
+    await run(
+      `UPDATE event_requirements
+       SET ${updates.join(', ')}
+       WHERE id = ?`,
+      values
+    );
+
+    const [requirement] = await query(
+      `SELECT er.*,
+        COUNT(ea.id) as assigned_techs
+      FROM event_requirements er
+      LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
+      WHERE er.id = ?
+      GROUP BY er.id`,
+      [id]
+    );
+
+    if (!requirement) {
+      return res.status(404).json({ error: 'Requirement not found' });
+    }
+
+    res.json(requirement);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * PUT /api/requirements/:id
- * Update a requirement
+ * Full update of a requirement (all fields)
  */
 router.put('/requirements/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
       requirement_date,
+      requirement_end_date,
       room_or_location,
       set_time,
       start_time,
@@ -122,16 +220,24 @@ router.put('/requirements/:id', async (req, res, next) => {
 
     await run(
       `UPDATE event_requirements
-       SET room_or_location = ?,
+       SET requirement_date = ?,
+           requirement_end_date = ?,
+           room_or_location = ?,
+           set_time = ?,
            start_time = ?,
            end_time = ?,
+           strike_time = ?,
            position = ?,
            techs_needed = ?
        WHERE id = ?`,
       [
+        requirement_date || null,
+        requirement_end_date || null,
         room_or_location || null,
+        set_time || null,
         start_time || null,
         end_time || null,
+        strike_time || null,
         position || null,
         techs_needed || 1,
         id
@@ -141,10 +247,10 @@ router.put('/requirements/:id', async (req, res, next) => {
     const [requirement] = await query(
       `SELECT er.*,
         COUNT(ea.id) as assigned_techs
-       FROM event_requirements er
-       LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
-       WHERE er.id = ?
-       GROUP BY er.id`,
+      FROM event_requirements er
+      LEFT JOIN event_assignments ea ON ea.requirement_id = er.id
+      WHERE er.id = ?
+      GROUP BY er.id`,
       [id]
     );
 
