@@ -1,4 +1,4 @@
-// frontend/src/pages/ScheduleGrid.js - FIXED DATA LOADING
+// frontend/src/pages/ScheduleGrid.js - FINAL FIXED
 import React, { useState, useEffect } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
@@ -97,8 +97,8 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     });
   };
 
-  // Get assignments for an event
-  const getEventAssignments = (eventId) => {
+  // Get assignments for a specific event
+  const getEventAssignmentsForEvent = (eventId) => {
     return assignments.filter(a => {
       const req = getRequirement(a.requirement_id);
       return req && req.event_id === eventId;
@@ -173,7 +173,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const positions = getAvailablePositions();
   const unassignedTechs = getUnassignedTechs();
 
-  console.log('Render - Events:', events.length, 'Requirements:', requirements.length, 'Assignments:', assignments.length);
+  console.log('Render - Events:', events.length, 'Requirements:', requirements.length, 'Assignments:', assignments.length, 'Positions:', positions.length);
 
   return (
     <div className="schedule-table">
@@ -184,7 +184,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
 
       {/* Main Content */}
       <div className="schedule-content">
-        {/* Left Sidebar */}
+        {/* Left Sidebar - Positions */}
         <div className="sidebar">
           {/* Positions Section */}
           <div className="sidebar-section">
@@ -202,31 +202,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                     title="Drag to event to create new assignment"
                   >
                     {position}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Technicians Section */}
-          <div className="sidebar-section">
-            <div className="section-header">👤 Available Techs ({unassignedTechs.length})</div>
-            <div className="techs-list">
-              {unassignedTechs.length === 0 ? (
-                <div className="empty-section">
-                  {technicians.length === 0 ? 'No technicians added' : 'All techs assigned'}
-                </div>
-              ) : (
-                unassignedTechs.map(tech => (
-                  <div
-                    key={tech.id}
-                    draggable
-                    onDragStart={(e) => handleTechDragStart(e, tech)}
-                    className="tech-card"
-                    title={`${tech.name} (${tech.position})`}
-                  >
-                    <div className="tech-name">{tech.name}</div>
-                    <div className="tech-position">{tech.position || 'Tech'}</div>
                   </div>
                 ))
               )}
@@ -257,10 +232,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
               </div>
             ) : (
               events.map(event => {
-                const eventAssignments = assignments.filter(a => {
-                  const req = getRequirement(a.requirement_id);
-                  return req && req.event_id === event.id;
-                });
+                const eventAssignments = getEventAssignmentsForEvent(event.id);
                 const eventRequirements = requirements.filter(r => r.event_id === event.id);
                 const isExpanded = expandedEvents[event.id];
 
@@ -385,6 +357,33 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                 );
               })
             )}
+          </div>
+        </div>
+
+        {/* Right Sidebar - Available Techs */}
+        <div className="sidebar sidebar-right">
+          <div className="sidebar-section">
+            <div className="section-header">👤 Available Techs ({unassignedTechs.length})</div>
+            <div className="techs-list">
+              {unassignedTechs.length === 0 ? (
+                <div className="empty-section">
+                  {technicians.length === 0 ? 'No technicians added' : 'All techs assigned'}
+                </div>
+              ) : (
+                unassignedTechs.map(tech => (
+                  <div
+                    key={tech.id}
+                    draggable
+                    onDragStart={(e) => handleTechDragStart(e, tech)}
+                    className="tech-card"
+                    title={`${tech.name} (${tech.position})`}
+                  >
+                    <div className="tech-name">{tech.name}</div>
+                    <div className="tech-position">{tech.position || 'Tech'}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
