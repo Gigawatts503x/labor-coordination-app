@@ -739,7 +739,7 @@ select.form-control {
 
 /* END PERPLEXITY DESIGN SYSTEM */
 ```css
-/* frontend/src/styles/ScheduleGrid.css */
+/* frontend/src/styles/ScheduleGrid.css - UPDATED */
 
 * {
   margin: 0;
@@ -778,7 +778,6 @@ select.form-control {
   margin: 0;
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
 }
 
@@ -788,22 +787,20 @@ select.form-control {
   display: flex;
   flex: 1;
   overflow: hidden;
-  gap: 1px;
+  gap: 0;
   background-color: var(--color-border);
 }
 
 /* ==================== SIDEBAR (20%) ==================== */
 
 .sidebar {
-  width: 20%;
-  min-width: 200px;
-  max-width: 280px;
+  width: 200px;
   background-color: var(--color-surface);
-  overflow-y: auto;
   border-right: 2px solid var(--color-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sidebar-section {
@@ -811,20 +808,33 @@ select.form-control {
   flex-direction: column;
   border-bottom: 1px solid var(--color-border);
   padding: 0;
+  overflow: hidden;
+}
+
+/* Positions section takes up most space */
+.sidebar-section:first-child {
   flex: 1;
   min-height: 0;
+}
+
+/* Available Techs section is compact */
+.sidebar-section:last-child {
+  flex: 0 1 auto;
+  max-height: 40%;
+  min-height: 150px;
 }
 
 .section-header {
   padding: var(--space-10) var(--space-12);
   background-color: var(--color-secondary);
   font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   position: sticky;
   top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .positions-list,
@@ -835,13 +845,14 @@ select.form-control {
   padding: var(--space-8);
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .empty-section {
   padding: var(--space-12);
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
 }
 
 .position-card,
@@ -849,14 +860,15 @@ select.form-control {
   padding: var(--space-10);
   background-color: rgba(var(--color-teal-500-rgb), 0.15);
   border: 1px solid rgba(var(--color-teal-500-rgb), 0.3);
-  border-radius: var(--radius-base);
+  border-radius: var(--radius-sm);
   cursor: move;
   user-select: none;
   transition: all var(--duration-fast) var(--ease-standard);
   font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   text-align: center;
   color: var(--color-text);
+  flex-shrink: 0;
 }
 
 .position-card:hover,
@@ -875,14 +887,15 @@ select.form-control {
 .tech-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   background-color: rgba(var(--color-success-rgb), 0.12);
   border-color: rgba(var(--color-success-rgb), 0.25);
 }
 
 .tech-name {
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
 }
 
 .tech-position {
@@ -899,6 +912,7 @@ select.form-control {
   background-color: var(--color-background);
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .table-container {
@@ -912,7 +926,7 @@ select.form-control {
   padding: var(--space-32) var(--space-20);
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
 }
 
 /* ==================== TABLE HEADER ROW ==================== */
@@ -925,8 +939,8 @@ select.form-control {
   position: sticky;
   top: 0;
   z-index: 20;
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
   user-select: none;
 }
 
@@ -995,8 +1009,8 @@ select.form-control {
   cursor: pointer;
   user-select: none;
   transition: background-color var(--duration-fast) var(--ease-standard);
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-base);
   min-height: 50px;
 }
 
@@ -1008,17 +1022,16 @@ select.form-control {
   width: 24px;
   text-align: center;
   flex-shrink: 0;
-  transition: transform var(--duration-fast) var(--ease-standard);
   color: var(--color-primary);
 }
 
 .event-name {
   color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
 }
 
 .event-stats {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   background-color: var(--color-secondary);
   padding: var(--space-4) var(--space-10);
@@ -1038,7 +1051,7 @@ select.form-control {
   padding: var(--space-20);
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   background-color: var(--color-background);
   border-bottom: 1px solid var(--color-border);
   min-height: 60px;
@@ -1082,7 +1095,7 @@ select.form-control {
   border-radius: var(--radius-sm);
   background-color: var(--color-surface);
   color: var(--color-text);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-family: var(--font-family-base);
   transition: all var(--duration-fast) var(--ease-standard);
 }
@@ -1115,7 +1128,7 @@ select.form-control {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-standard);
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   padding: 0;
 }
 
@@ -1154,44 +1167,12 @@ select.form-control {
 
 @media (max-width: 1200px) {
   .sidebar {
-    width: 25%;
+    width: 180px;
   }
 
   .table-header-row,
   .assignment-row {
     grid-template-columns: 100px 130px 150px 100px 90px 90px 70px 50px;
-  }
-
-  .col-position {
-    width: 100px;
-  }
-
-  .col-technician {
-    width: 130px;
-  }
-
-  .col-location {
-    width: 150px;
-  }
-
-  .col-date {
-    width: 100px;
-  }
-
-  .col-in {
-    width: 90px;
-  }
-
-  .col-out {
-    width: 90px;
-  }
-
-  .col-hours {
-    width: 70px;
-  }
-
-  .col-actions {
-    width: 50px;
   }
 }
 
@@ -1208,20 +1189,19 @@ select.form-control {
     border-bottom: 2px solid var(--color-border);
   }
 
+  .sidebar-section:first-child {
+    flex: 0 1 50%;
+  }
+
+  .sidebar-section:last-child {
+    flex: 0 1 50%;
+    max-height: none;
+    min-height: auto;
+  }
+
   .table-header-row,
   .assignment-row {
     grid-template-columns: 80px 110px 120px 80px 70px 70px 60px 40px;
-  }
-
-  .section-header {
-    font-size: var(--font-size-sm);
-    padding: var(--space-8) var(--space-10);
-  }
-
-  .positions-list,
-  .techs-list {
-    gap: var(--space-4);
-    padding: var(--space-6);
   }
 }
 
@@ -1234,34 +1214,47 @@ select.form-control {
     font-size: var(--font-size-2xl);
   }
 
-  .sidebar {
-    max-height: 150px;
-    min-width: 100%;
+  .schedule-content {
+    flex-direction: column;
   }
 
-  .sidebar-section {
-    min-height: 100px;
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 180px;
+    border-right: none;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .sidebar-section:first-child {
+    flex: 0 1 50%;
+  }
+
+  .sidebar-section:last-child {
+    flex: 0 1 50%;
+    max-height: none;
+    min-height: auto;
   }
 
   .section-header {
+    padding: var(--space-8) var(--space-10);
     font-size: var(--font-size-xs);
-    padding: var(--space-6) var(--space-8);
   }
 
   .positions-list,
   .techs-list {
     gap: var(--space-4);
-    padding: var(--space-4);
+    padding: var(--space-6);
   }
 
   .position-card,
   .tech-card {
     padding: var(--space-8);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
   }
 
   .tech-name {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
   }
 
   .tech-position {
@@ -1270,7 +1263,7 @@ select.form-control {
 
   .table-header-row,
   .assignment-row {
-    grid-template-columns: 70px 100px 110px 70px 60px 60px 50px 35px;
+    grid-template-columns: 70px 90px 100px 70px 60px 60px 50px 40px;
     font-size: var(--font-size-xs);
   }
 
@@ -1280,30 +1273,36 @@ select.form-control {
   }
 
   .event-header-row {
-    padding: var(--space-8) var(--space-10);
-    font-size: var(--font-size-base);
+    grid-template-columns: 24px 1fr auto;
     gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+    font-size: var(--font-size-sm);
+    min-height: 44px;
+  }
+
+  .toggle {
+    width: 20px;
   }
 
   .event-stats {
-    font-size: var(--font-size-xs);
-    padding: var(--space-2) var(--space-6);
+    font-size: 10px;
+    padding: var(--space-2) var(--space-8);
   }
 
   .cell-input {
     padding: var(--space-4) var(--space-6);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
   }
 
   .btn-delete {
     width: 28px;
     height: 28px;
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
   }
 
   .empty-table,
   .empty-message {
     padding: var(--space-16);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
   }
 }

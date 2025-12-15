@@ -1,8 +1,8 @@
-// frontend/src/pages/ScheduleGrid.js
+// frontend/src/pages/ScheduleGrid.js - FIXED DATA LOADING
 import React, { useState, useEffect } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
-import { getScheduleData } from '../utils/api';
+import { getEventRequirements, getEventAssignments } from '../utils/api';
 import '../styles/ScheduleGrid.css';
 
 const ScheduleGrid = ({ onNavigateToEvent }) => {
@@ -19,7 +19,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const [draggedTech, setDraggedTech] = useState(null);
   const [expandedEvents, setExpandedEvents] = useState({});
 
-  // Load all data
+  // Load all data from each event
   useEffect(() => {
     const loadAllData = async () => {
       try {
@@ -27,15 +27,29 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         const allAssignments = [];
         const allRequirements = [];
 
+        console.log('Loading data for events:', events);
+
         for (const event of events) {
           try {
-            const data = await getScheduleData(event.id);
-            if (data.assignments) allAssignments.push(...data.assignments);
-            if (data.requirements) allRequirements.push(...data.requirements);
+            console.log(`Fetching data for event ${event.id}...`);
+            
+            const [reqResponse, assignResponse] = await Promise.all([
+              getEventRequirements(event.id),
+              getEventAssignments(event.id)
+            ]);
+
+            console.log(`Event ${event.id} requirements:`, reqResponse.data);
+            console.log(`Event ${event.id} assignments:`, assignResponse.data);
+
+            if (reqResponse.data) allRequirements.push(...reqResponse.data);
+            if (assignResponse.data) allAssignments.push(...assignResponse.data);
           } catch (err) {
             console.warn(`Failed to load data for event ${event.id}:`, err);
           }
         }
+
+        console.log('All requirements loaded:', allRequirements);
+        console.log('All assignments loaded:', allAssignments);
 
         setAssignments(allAssignments);
         setRequirements(allRequirements);
@@ -116,7 +130,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       const event = getEvent(eventId);
       if (!event) return;
 
-      // Create temp requirement
+      // Create temp requirement (will need backend integration)
       const tempReq = {
         id: `temp-${Date.now()}`,
         event_id: eventId,
@@ -133,7 +147,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       setDraggedPosition(null);
     }
 
-    // If dragging tech → assign to requirement
     if (draggedTech) {
       setDraggedTech(null);
     }
@@ -160,6 +173,8 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const positions = getAvailablePositions();
   const unassignedTechs = getUnassignedTechs();
 
+  console.log('Render - Events:', events.length, 'Requirements:', requirements.length, 'Assignments:', assignments.length);
+
   return (
     <div className="schedule-table">
       {/* Header */}
@@ -173,10 +188,10 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         <div className="sidebar">
           {/* Positions Section */}
           <div className="sidebar-section">
-            <div className="section-header">📌 Positions</div>
+            <div className="section-header">📌 Positions ({positions.length})</div>
             <div className="positions-list">
               {positions.length === 0 ? (
-                <div className="empty-section">No positions available</div>
+                <div className="empty-section">No positions available. Create requirements first.</div>
               ) : (
                 positions.map(position => (
                   <div
@@ -195,10 +210,12 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
 
           {/* Technicians Section */}
           <div className="sidebar-section">
-            <div className="section-header">👤 Available Techs</div>
+            <div className="section-header">👤 Available Techs ({unassignedTechs.length})</div>
             <div className="techs-list">
               {unassignedTechs.length === 0 ? (
-                <div className="empty-section">All techs assigned</div>
+                <div className="empty-section">
+                  {technicians.length === 0 ? 'No technicians added' : 'All techs assigned'}
+                </div>
               ) : (
                 unassignedTechs.map(tech => (
                   <div
@@ -240,7 +257,11 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
               </div>
             ) : (
               events.map(event => {
-                const eventAssignments = getEventAssignments(event.id);
+                const eventAssignments = assignments.filter(a => {
+                  const req = getRequirement(a.requirement_id);
+                  return req && req.event_id === event.id;
+                });
+                const eventRequirements = requirements.filter(r => r.event_id === event.id);
                 const isExpanded = expandedEvents[event.id];
 
                 return (
@@ -258,26 +279,26 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                       <div className="toggle">{isExpanded ? '▼' : '▶'}</div>
                       <div className="event-name">{event.eventName || event.name || 'Untitled Event'}</div>
                       <div className="event-stats">
-                        {eventAssignments.length} assignments
+                        {eventAssignments.length} / {eventRequirements.length} filled
                       </div>
                     </div>
 
                     {/* Assignments */}
                     {isExpanded && (
                       <div className="assignments-group">
-                        {eventAssignments.length === 0 ? (
+                        {eventRequirements.length === 0 ? (
                           <div className="empty-message">
                             💡 Drag position from left → Then drag tech name to assign
                           </div>
                         ) : (
-                          eventAssignments.map(assignment => {
-                            const tech = getTech(assignment.technician_id);
-                            const req = getRequirement(assignment.requirement_id);
+                          eventRequirements.map(requirement => {
+                            const assignment = assignments.find(a => a.requirement_id === requirement.id);
+                            const tech = assignment ? getTech(assignment.technician_id) : null;
 
                             return (
-                              <div key={assignment.id} className="assignment-row">
+                              <div key={requirement.id} className="assignment-row">
                                 <div className="col col-position">
-                                  {req?.position || 'Unknown'}
+                                  {requirement.position || 'Unknown'}
                                 </div>
 
                                 <div className="col col-technician">
@@ -292,8 +313,12 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                                 <div className="col col-location">
                                   <input
                                     type="text"
-                                    value={req?.room_or_location || ''}
-                                    onChange={(e) => handleCellChange(assignment.id, 'location', e.target.value)}
+                                    value={requirement.room_or_location || ''}
+                                    onChange={(e) => {
+                                      if (assignment) {
+                                        handleCellChange(assignment.id, 'location', e.target.value);
+                                      }
+                                    }}
                                     className="cell-input"
                                   />
                                 </div>
@@ -301,48 +326,54 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                                 <div className="col col-date">
                                   <input
                                     type="date"
-                                    value={req?.requirement_date || ''}
-                                    onChange={(e) => handleCellChange(assignment.id, 'date', e.target.value)}
+                                    value={requirement.requirement_date || ''}
                                     className="cell-input"
+                                    readOnly
                                   />
                                 </div>
 
                                 <div className="col col-in">
                                   <input
                                     type="time"
-                                    value={req?.start_time || ''}
-                                    onChange={(e) => handleCellChange(assignment.id, 'in_time', e.target.value)}
+                                    value={requirement.start_time || ''}
                                     className="cell-input"
+                                    readOnly
                                   />
                                 </div>
 
                                 <div className="col col-out">
                                   <input
                                     type="time"
-                                    value={req?.end_time || ''}
-                                    onChange={(e) => handleCellChange(assignment.id, 'out_time', e.target.value)}
+                                    value={requirement.end_time || ''}
                                     className="cell-input"
+                                    readOnly
                                   />
                                 </div>
 
                                 <div className="col col-hours">
                                   <input
                                     type="number"
-                                    value={assignment.hours_worked || 0}
-                                    onChange={(e) => handleCellChange(assignment.id, 'hours_worked', parseFloat(e.target.value))}
+                                    value={assignment?.hours_worked || 0}
+                                    onChange={(e) => {
+                                      if (assignment) {
+                                        handleCellChange(assignment.id, 'hours_worked', parseFloat(e.target.value));
+                                      }
+                                    }}
                                     className="cell-input"
                                     step="0.5"
                                   />
                                 </div>
 
                                 <div className="col col-actions">
-                                  <button
-                                    className="btn-delete"
-                                    onClick={() => handleDeleteAssignment(assignment.id)}
-                                    title="Delete assignment"
-                                  >
-                                    ✕
-                                  </button>
+                                  {assignment && (
+                                    <button
+                                      className="btn-delete"
+                                      onClick={() => handleDeleteAssignment(assignment.id)}
+                                      title="Delete assignment"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
