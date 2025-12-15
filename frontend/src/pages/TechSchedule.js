@@ -1,6 +1,6 @@
 // frontend/src/pages/TechSchedule.js
 import React, { useState, useEffect } from 'react';
-import { getTechnicians, getTechSchedule, updateAssignment, deleteAssignment } from '../utils/api';
+import { getTechnicians, getScheduleData, updateAssignment, deleteAssignment } from '../utils/api';
 import '../styles/TechSchedule.css';
 
 const TechSchedule = ({ onBack }) => {
@@ -35,12 +35,11 @@ const TechSchedule = ({ onBack }) => {
         setLoading(true);
         const [techRes, schedRes] = await Promise.all([
           getTechnicians(),
-          getTechSchedule(selectedTechId)
+          getScheduleData(selectedTechId)
         ]);
-
         const tech = techRes.data.find(t => t.id === selectedTechId);
         setSelectedTech(tech);
-        setAssignments(schedRes.data);
+        setAssignments(schedRes.data || []);
         setError(null);
       } catch (err) {
         setError(err.message);
@@ -48,7 +47,6 @@ const TechSchedule = ({ onBack }) => {
         setLoading(false);
       }
     };
-
     load();
   }, [selectedTechId]);
 
@@ -67,7 +65,9 @@ const TechSchedule = ({ onBack }) => {
   const handleSaveEdit = async () => {
     try {
       await updateAssignment(editingId, editData);
-      setAssignments(assignments.map(a => a.id === editingId ? editData : a));
+      setAssignments(assignments.map(a =>
+        a.id === editingId ? editData : a
+      ));
       setEditingId(null);
       setEditData({});
     } catch (err) {
@@ -100,14 +100,11 @@ const TechSchedule = ({ onBack }) => {
       <header className="schedule-header">
         <div className="tech-selector">
           <label>Select Technician</label>
-          <select
-            value={selectedTechId || ''}
-            onChange={(e) => setSelectedTechId(e.target.value)}
-          >
+          <select value={selectedTechId || ''} onChange={(e) => setSelectedTechId(e.target.value)}>
             <option value="">Choose a technician...</option>
             {technicians.map(tech => (
               <option key={tech.id} value={tech.id}>
-                {tech.name} ({tech.position || 'No position'})
+                {tech.name} {tech.position ? `- ${tech.position}` : 'No position'}
               </option>
             ))}
           </select>
@@ -116,19 +113,22 @@ const TechSchedule = ({ onBack }) => {
         {selectedTech && (
           <div className="tech-info">
             <h1>{selectedTech.name}</h1>
-            <p><strong>Primary Position:</strong> {selectedTech.position || 'N/A'}</p>
-            <div className="totals">
-              <div className="total-card">
-                <p className="label">Total Tech Pay</p>
-                <p className="amount">${totalPay.toFixed(2)}</p>
-              </div>
-              <div className="total-card">
-                <p className="label">Total Customer Bill</p>
-                <p className="amount">${totalBill.toFixed(2)}</p>
-              </div>
-            </div>
+            <p>
+              <strong>Primary Position:</strong> {selectedTech.position || 'N/A'}
+            </p>
           </div>
         )}
+
+        <div className="totals">
+          <div className="total-card">
+            <p className="label">Total Tech Pay</p>
+            <p className="amount">${totalPay.toFixed(2)}</p>
+          </div>
+          <div className="total-card">
+            <p className="label">Total Customer Bill</p>
+            <p className="amount">${totalBill.toFixed(2)}</p>
+          </div>
+        </div>
       </header>
 
       {error && <div className="error-message">{error}</div>}
@@ -162,7 +162,10 @@ const TechSchedule = ({ onBack }) => {
                 </thead>
                 <tbody>
                   {assignments.map(assignment => (
-                    <tr key={assignment.id} className={editingId === assignment.id ? 'editing' : ''}>
+                    <tr
+                      key={assignment.id}
+                      className={editingId === assignment.id ? 'editing' : ''}
+                    >
                       {editingId === assignment.id ? (
                         <>
                           <td>{assignment.event_name}</td>
@@ -171,28 +174,36 @@ const TechSchedule = ({ onBack }) => {
                             <input
                               type="date"
                               value={editData.assignment_date || ''}
-                              onChange={(e) => handleEditChange('assignment_date', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('assignment_date', e.target.value)
+                              }
                             />
                           </td>
                           <td>
                             <input
                               type="time"
                               value={editData.start_time || ''}
-                              onChange={(e) => handleEditChange('start_time', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('start_time', e.target.value)
+                              }
                             />
                           </td>
                           <td>
                             <input
                               type="time"
                               value={editData.end_time || ''}
-                              onChange={(e) => handleEditChange('end_time', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('end_time', e.target.value)
+                              }
                             />
                           </td>
                           <td>
                             <input
                               type="text"
                               value={editData.position || ''}
-                              onChange={(e) => handleEditChange('position', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('position', e.target.value)
+                              }
                             />
                           </td>
                           <td>
@@ -200,13 +211,17 @@ const TechSchedule = ({ onBack }) => {
                               type="number"
                               step="0.25"
                               value={editData.hours_worked || ''}
-                              onChange={(e) => handleEditChange('hours_worked', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleEditChange('hours_worked', parseFloat(e.target.value) || 0)
+                              }
                             />
                           </td>
                           <td>
                             <select
                               value={editData.rate_type || ''}
-                              onChange={(e) => handleEditChange('rate_type', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('rate_type', e.target.value)
+                              }
                             >
                               <option value="">Select</option>
                               <option value="hourly">Hourly</option>
@@ -219,7 +234,9 @@ const TechSchedule = ({ onBack }) => {
                               type="number"
                               step="0.01"
                               value={editData.calculated_pay || ''}
-                              onChange={(e) => handleEditChange('calculated_pay', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleEditChange('calculated_pay', parseFloat(e.target.value) || 0)
+                              }
                             />
                           </td>
                           <td>
@@ -227,14 +244,18 @@ const TechSchedule = ({ onBack }) => {
                               type="number"
                               step="0.01"
                               value={editData.customer_bill || ''}
-                              onChange={(e) => handleEditChange('customer_bill', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleEditChange('customer_bill', parseFloat(e.target.value) || 0)
+                              }
                             />
                           </td>
                           <td>
                             <input
                               type="text"
                               value={editData.notes || ''}
-                              onChange={(e) => handleEditChange('notes', e.target.value)}
+                              onChange={(e) =>
+                                handleEditChange('notes', e.target.value)
+                              }
                               placeholder="Notes"
                             />
                           </td>
@@ -257,15 +278,15 @@ const TechSchedule = ({ onBack }) => {
                         <>
                           <td>{assignment.event_name}</td>
                           <td>{assignment.client_name}</td>
-                          <td>{assignment.assignment_date || '—'}</td>
-                          <td>{assignment.start_time || '—'}</td>
-                          <td>{assignment.end_time || '—'}</td>
+                          <td>{assignment.assignment_date}</td>
+                          <td>{assignment.start_time}</td>
+                          <td>{assignment.end_time}</td>
                           <td>{assignment.position}</td>
                           <td>{assignment.hours_worked}</td>
                           <td>{assignment.rate_type}</td>
                           <td>${(assignment.calculated_pay || 0).toFixed(2)}</td>
                           <td>${(assignment.customer_bill || 0).toFixed(2)}</td>
-                          <td>{assignment.notes || '—'}</td>
+                          <td>{assignment.notes}</td>
                           <td>
                             <button
                               className="btn btn-sm btn-edit"

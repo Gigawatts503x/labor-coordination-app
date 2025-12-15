@@ -1,15 +1,16 @@
+// frontend/src/hooks/useAssignments.js
 import { useState, useEffect } from 'react';
+
 import {
   getEventAssignments,
-  createEventAssignment,
+  createAssignment,
   updateAssignment,
-  patchAssignment,
   deleteAssignment
 } from '../utils/api';
 
 /**
  * Hook for managing event assignments with granular update support
- * 
+ *
  * Features:
  * - Fetch assignments for an event
  * - Add new assignment
@@ -59,7 +60,10 @@ export const useAssignments = (eventId) => {
    */
   const addAssignment = async (data) => {
     try {
-      const response = await createEventAssignment(eventId, data);
+      const response = await createAssignment({
+        event_id: eventId,
+        ...data
+      });
       setAssignments([...assignments, response.data]);
       return response.data;
     } catch (err) {
@@ -85,7 +89,7 @@ export const useAssignments = (eventId) => {
   /**
    * Update a single field on an assignment (PATCH)
    * Used for inline cell edits - sends only changed field
-   * 
+   *
    * @param {string} id - Assignment ID
    * @param {object} updates - Object with field(s) to update
    * @example
@@ -94,7 +98,7 @@ export const useAssignments = (eventId) => {
    */
   const updateAssignmentField = async (id, updates) => {
     try {
-      const response = await patchAssignment(id, updates);
+      const response = await updateAssignment(id, updates);
       setAssignments(assignments.map(a =>
         a.id === id ? { ...a, ...response.data } : a
       ));
@@ -108,7 +112,7 @@ export const useAssignments = (eventId) => {
   /**
    * Update full assignment (PUT)
    * For complete record updates
-   * 
+   *
    * @param {string} id - Assignment ID
    * @param {object} updates - Complete assignment object
    */
@@ -128,7 +132,7 @@ export const useAssignments = (eventId) => {
   /**
    * Optimistic local update (no API call)
    * Used for immediate UI feedback before async operation
-   * 
+   *
    * @param {string} id - Assignment ID
    * @param {object} updates - Partial updates
    */
@@ -150,9 +154,9 @@ export const useAssignments = (eventId) => {
     error,
     addAssignment,
     removeAssignment,
-    updateAssignmentField,    // ✅ NEW: For inline cell edits (PATCH)
-    updateAssignmentFull,     // ✅ NEW: For full updates (PUT)
-    updateAssignmentLocal,    // Optimistic local update
+    updateAssignmentField, // ✅ For inline cell edits (PATCH)
+    updateAssignmentFull, // ✅ For full updates (PUT)
+    updateAssignmentLocal, // Optimistic local update
     refreshAssignments
   };
 };

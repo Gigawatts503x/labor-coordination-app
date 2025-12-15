@@ -1,364 +1,180 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DB_PATH = path.join(__dirname, '../../data/labor.db');
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
+const dataDir = path.join(dirname, '../../data');
+const DBPATH = path.join(dataDir, 'labor.db');
 
 export let db;
 
 export function initializeDatabase() {
   try {
-    db = new Database(DB_PATH);
+    // Ensure data directory exists
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      console.log(`📁 Created data directory: ${dataDir}`);
+    }
+
+    console.log(`📦 Initializing database at: ${DBPATH}`);
+    
+    db = new Database(DBPATH);
     db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
 
-    const SCHEMA = {
-      sqlite: `
-        -- Events table
-        CREATE TABLE IF NOT EXISTS events (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          client_name TEXT,
-          client_contact TEXT,
-          client_phone TEXT,
-          client_email TEXT,
-          client_address TEXT,
-          po_number TEXT,
-          start_date TEXT,
-          end_date TEXT,
-          total_tech_payout REAL DEFAULT 0,
-          total_labor_cost REAL DEFAULT 0,
-          total_customer_billing REAL DEFAULT 0,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
+    // Array of individual CREATE TABLE statements
+    const statements = [
+      // Events table
+      `CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        clientname TEXT,
+        clientcontact TEXT,
+        clientphone TEXT,
+        clientemail TEXT,
+        clientaddress TEXT,
+        ponumber TEXT,
+        startdate TEXT,
+        enddate TEXT,
+        totaltechpayout REAL DEFAULT 0,
+        totallaborcost REAL DEFAULT 0,
+        totalcustomerbilling REAL DEFAULT 0,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      // Event requirements table
+      `CREATE TABLE IF NOT EXISTS eventrequirements (
+        id TEXT PRIMARY KEY,
+        eventid TEXT NOT NULL,
+        requirementdate TEXT,
+        requirementenddate TEXT,
+        roomorlocation TEXT,
+        settime TEXT,
+        starttime TEXT NOT NULL,
+        endtime TEXT NOT NULL,
+        striketime TEXT,
+        position TEXT,
+        techsneeded INTEGER DEFAULT 1,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
+      )`,
+      
+      // Technicians table
+      `CREATE TABLE IF NOT EXISTS technicians (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        position TEXT,
+        hourlyrate REAL DEFAULT 50,
+        halfdayrate REAL DEFAULT 250,
+        fulldayrate REAL DEFAULT 500,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      // Event assignments table
+      `CREATE TABLE IF NOT EXISTS eventassignments (
+        id TEXT PRIMARY KEY,
+        eventid TEXT NOT NULL,
+        technicianid TEXT NOT NULL,
+        requirementid TEXT,
+        position TEXT,
+        roomorlocation TEXT,
+        hoursworked REAL DEFAULT 0,
+        basehours REAL DEFAULT 0,
+        othours REAL DEFAULT 0,
+        dothours REAL DEFAULT 0,
+        ratetype TEXT,
+        techhourlyrate REAL,
+        techhalfdayrate REAL,
+        techfulldayrate REAL,
+        billhourlyrate REAL,
+        billhalfdayrate REAL,
+        billfulldayrate REAL,
+        calculatedpay REAL DEFAULT 0,
+        customerbill REAL DEFAULT 0,
+        notes TEXT,
+        assignmentdate TEXT,
+        starttime TEXT,
+        endtime TEXT,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE,
+        FOREIGN KEY (technicianid) REFERENCES technicians(id) ON DELETE CASCADE,
+        FOREIGN KEY (requirementid) REFERENCES eventrequirements(id) ON DELETE SET NULL
+      )`,
+      
+      // Settings table
+      `CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        halfdayhours INTEGER DEFAULT 5,
+        fulldayhours INTEGER DEFAULT 10,
+        otthreshold INTEGER DEFAULT 10,
+        dotthreshold INTEGER DEFAULT 20,
+        dotstarthour INTEGER DEFAULT 20,
+        techbaserate REAL DEFAULT 50,
+        customerbaserate REAL DEFAULT 75,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      // Event settings table
+      `CREATE TABLE IF NOT EXISTS eventsettings (
+        id TEXT PRIMARY KEY,
+        eventid TEXT NOT NULL UNIQUE,
+        techhourlyrate REAL,
+        techhalfdayrate REAL,
+        techfulldayrate REAL,
+        billhourlyrate REAL,
+        billhalfdayrate REAL,
+        billfulldayrate REAL,
+        halfdayhours INTEGER,
+        fulldayhours INTEGER,
+        otthreshold INTEGER,
+        dotthreshold INTEGER,
+        dotstarthour INTEGER,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
+      )`,
+      
+      // Indexes for performance
+      `CREATE INDEX IF NOT EXISTS idx_events_created ON events(createdat)`,
+      `CREATE INDEX IF NOT EXISTS idx_requirements_event ON eventrequirements(eventid)`,
+      `CREATE INDEX IF NOT EXISTS idx_assignments_event ON eventassignments(eventid)`,
+      `CREATE INDEX IF NOT EXISTS idx_assignments_tech ON eventassignments(technicianid)`,
+      `CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON eventassignments(requirementid)`
+    ];
 
-        -- Event requirements (positions needed)
-        CREATE TABLE IF NOT EXISTS event_requirements (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          position TEXT NOT NULL,
-          location TEXT,
-          date TEXT,
-          requirement_date TEXT,
-          requirement_end_date TEXT,
-          set_time TEXT,
-          strike_time TEXT,
-          techs_needed INTEGER DEFAULT 1,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Technicians
-        CREATE TABLE IF NOT EXISTS technicians (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          hourly_rate REAL DEFAULT 50,
-          halfday_rate REAL DEFAULT 250,
-          fullday_rate REAL DEFAULT 500,
-          skills TEXT,
-          phone TEXT,
-          email TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Event assignments (techs assigned to events)
-        CREATE TABLE IF NOT EXISTS event_assignments (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          requirement_id TEXT,
-          technician_id TEXT NOT NULL,
-          position TEXT,
-          location TEXT,
-          assignment_date TEXT,
-          start_time TEXT,
-          end_time TEXT,
-          hours_worked REAL DEFAULT 0,
-          rate_type TEXT DEFAULT 'hourly',
-          calculated_pay REAL DEFAULT 0,
-          customer_bill REAL DEFAULT 0,
-          notes TEXT,
-          base_hours REAL DEFAULT 0,
-          ot_hours REAL DEFAULT 0,
-          dt_hours REAL DEFAULT 0,
-          tech_hourly_rate REAL,
-          tech_halfday_rate REAL,
-          tech_fullday_rate REAL,
-          bill_hourly_rate REAL,
-          bill_halfday_rate REAL,
-          bill_fullday_rate REAL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id),
-          FOREIGN KEY (requirement_id) REFERENCES event_requirements(id),
-          FOREIGN KEY (technician_id) REFERENCES technicians(id)
-        );
-
-        -- Settings (global defaults)
-        CREATE TABLE IF NOT EXISTS settings (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          halfday_hours INTEGER DEFAULT 5,
-          fullday_hours INTEGER DEFAULT 10,
-          ot_threshold INTEGER DEFAULT 10,
-          dot_threshold INTEGER DEFAULT 20,
-          dot_start_hour INTEGER DEFAULT 20,
-          tech_base_rate REAL DEFAULT 50,
-          customer_base_rate REAL DEFAULT 75,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Event-level rate overrides
-        CREATE TABLE IF NOT EXISTS event_settings (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL UNIQUE,
-          tech_hourly_rate REAL,
-          tech_halfday_rate REAL,
-          tech_fullday_rate REAL,
-          bill_hourly_rate REAL,
-          bill_halfday_rate REAL,
-          bill_fullday_rate REAL,
-          ot_threshold INTEGER,
-          dot_start_hour INTEGER,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Schedule history for undo/redo
-        CREATE TABLE IF NOT EXISTS schedule_history (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          action TEXT NOT NULL,
-          entity_type TEXT NOT NULL,
-          entity_id TEXT NOT NULL,
-          before_state TEXT,
-          after_state TEXT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Positions reference table
-        CREATE TABLE IF NOT EXISTS positions (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL UNIQUE,
-          description TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Rate configurations (per-event)
-        CREATE TABLE IF NOT EXISTS rate_configs (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          overtime_threshold INTEGER DEFAULT 8,
-          overtime_multiplier REAL DEFAULT 1.5,
-          billing_multiplier REAL DEFAULT 1.3,
-          rounding_mode TEXT DEFAULT 'round',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Invoices
-        CREATE TABLE IF NOT EXISTS invoices (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          amount REAL DEFAULT 0,
-          status TEXT DEFAULT 'draft',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Create indexes for performance
-        CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
-        CREATE INDEX IF NOT EXISTS idx_requirements_event ON event_requirements(event_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_event ON event_assignments(event_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_tech ON event_assignments(technician_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON event_assignments(requirement_id);
-        CREATE INDEX IF NOT EXISTS idx_history_timestamp ON schedule_history(timestamp);
-      `,
-      postgres: `
-        -- Events table
-        CREATE TABLE IF NOT EXISTS events (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          client_name TEXT,
-          client_contact TEXT,
-          client_phone TEXT,
-          client_email TEXT,
-          client_address TEXT,
-          po_number TEXT,
-          start_date TEXT,
-          end_date TEXT,
-          total_tech_payout REAL DEFAULT 0,
-          total_labor_cost REAL DEFAULT 0,
-          total_customer_billing REAL DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Event requirements
-        CREATE TABLE IF NOT EXISTS event_requirements (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          position TEXT NOT NULL,
-          location TEXT,
-          date TEXT,
-          requirement_date TEXT,
-          requirement_end_date TEXT,
-          set_time TEXT,
-          strike_time TEXT,
-          techs_needed INTEGER DEFAULT 1,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Technicians
-        CREATE TABLE IF NOT EXISTS technicians (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          hourly_rate REAL DEFAULT 50,
-          halfday_rate REAL DEFAULT 250,
-          fullday_rate REAL DEFAULT 500,
-          skills TEXT,
-          phone TEXT,
-          email TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Event assignments
-        CREATE TABLE IF NOT EXISTS event_assignments (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          requirement_id TEXT,
-          technician_id TEXT NOT NULL,
-          position TEXT,
-          location TEXT,
-          assignment_date TEXT,
-          start_time TEXT,
-          end_time TEXT,
-          hours_worked REAL DEFAULT 0,
-          rate_type TEXT DEFAULT 'hourly',
-          calculated_pay REAL DEFAULT 0,
-          customer_bill REAL DEFAULT 0,
-          notes TEXT,
-          base_hours REAL DEFAULT 0,
-          ot_hours REAL DEFAULT 0,
-          dt_hours REAL DEFAULT 0,
-          tech_hourly_rate REAL,
-          tech_halfday_rate REAL,
-          tech_fullday_rate REAL,
-          bill_hourly_rate REAL,
-          bill_halfday_rate REAL,
-          bill_fullday_rate REAL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id),
-          FOREIGN KEY (requirement_id) REFERENCES event_requirements(id),
-          FOREIGN KEY (technician_id) REFERENCES technicians(id)
-        );
-
-        -- Settings
-        CREATE TABLE IF NOT EXISTS settings (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          halfday_hours INTEGER DEFAULT 5,
-          fullday_hours INTEGER DEFAULT 10,
-          ot_threshold INTEGER DEFAULT 10,
-          dot_threshold INTEGER DEFAULT 20,
-          dot_start_hour INTEGER DEFAULT 20,
-          tech_base_rate REAL DEFAULT 50,
-          customer_base_rate REAL DEFAULT 75,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Event-level rate overrides
-        CREATE TABLE IF NOT EXISTS event_settings (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL UNIQUE,
-          tech_hourly_rate REAL,
-          tech_halfday_rate REAL,
-          tech_fullday_rate REAL,
-          bill_hourly_rate REAL,
-          bill_halfday_rate REAL,
-          bill_fullday_rate REAL,
-          ot_threshold INTEGER,
-          dot_start_hour INTEGER,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Schedule history for undo/redo
-        CREATE TABLE IF NOT EXISTS schedule_history (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          action TEXT NOT NULL,
-          entity_type TEXT NOT NULL,
-          entity_id TEXT NOT NULL,
-          before_state TEXT,
-          after_state TEXT,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Positions
-        CREATE TABLE IF NOT EXISTS positions (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL UNIQUE,
-          description TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Rate configurations
-        CREATE TABLE IF NOT EXISTS rate_configs (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          overtime_threshold INTEGER DEFAULT 8,
-          overtime_multiplier REAL DEFAULT 1.5,
-          billing_multiplier REAL DEFAULT 1.3,
-          rounding_mode TEXT DEFAULT 'round',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Invoices
-        CREATE TABLE IF NOT EXISTS invoices (
-          id TEXT PRIMARY KEY,
-          event_id TEXT NOT NULL,
-          amount REAL DEFAULT 0,
-          status TEXT DEFAULT 'draft',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (event_id) REFERENCES events(id)
-        );
-
-        -- Indexes
-        CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
-        CREATE INDEX IF NOT EXISTS idx_requirements_event ON event_requirements(event_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_event ON event_assignments(event_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_tech ON event_assignments(technician_id);
-        CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON event_assignments(requirement_id);
-        CREATE INDEX IF NOT EXISTS idx_history_timestamp ON schedule_history(timestamp);
-      `
-    };
-
-    // Execute SQLite schema
-    const statements = SCHEMA.sqlite.split(';').filter(s => s.trim());
-    for (const statement of statements) {
-      if (statement.trim()) {
-        db.exec(statement);
+    // Execute each statement using db.prepare().run() - THE CORRECT WAY
+    let successCount = 0;
+    for (const stmt of statements) {
+      try {
+        const trimmed = stmt.trim();
+        if (trimmed) {
+          // Use prepare().run() instead of exec() - this is the correct better-sqlite3 API
+          const prepared = db.prepare(trimmed);
+          prepared.run();
+          successCount++;
+        }
+      } catch (error) {
+        console.error(`❌ Error executing statement: ${error.message}`);
+        // Log which statement failed
+        console.error(`Failed statement: ${stmt.substring(0, 50)}...`);
+        throw error;
       }
     }
 
-    console.log('✅ Database initialized successfully');
+    console.log(`✅ Database initialized successfully`);
+    console.log(`✅ All ${successCount} statements executed`);
+    console.log(`✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings, indexes`);
+    
     return db;
   } catch (error) {
-    console.error('❌ Database initialization error:', error);
+    console.error(`❌ Database initialization error: ${error.message}`);
+    console.error('Error details:', error);
     throw error;
   }
 }
@@ -368,7 +184,7 @@ export function query(sql, params = []) {
     const stmt = db.prepare(sql);
     return stmt.all(...params);
   } catch (error) {
-    console.error('Query error:', error);
+    console.error('❌ Query error:', error);
     throw error;
   }
 }
@@ -378,7 +194,7 @@ export function run(sql, params = []) {
     const stmt = db.prepare(sql);
     return stmt.run(...params);
   } catch (error) {
-    console.error('Run error:', error);
+    console.error('❌ Run error:', error);
     throw error;
   }
 }

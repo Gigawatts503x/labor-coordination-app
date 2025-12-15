@@ -4,17 +4,18 @@ import { query, run } from '../config/database.js';
 
 const router = express.Router();
 
-// GET all assignments for an event
+// GET /api/events/{eventId}/assignments - Get all assignments for an event
 router.get('/events/:eventId/assignments', async (req, res, next) => {
   try {
     const { eventId } = req.params;
     const assignments = await query(
-      `SELECT ea.*, t.name as tech_name, er.position as req_position
-       FROM event_assignments ea
-       LEFT JOIN technicians t ON ea.technician_id = t.id
-       LEFT JOIN event_requirements er ON ea.requirement_id = er.id
-       WHERE ea.event_id = ?
-       ORDER BY ea.assignment_date, ea.start_time`,
+      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
+              e.name AS eventname, e.clientname 
+       FROM eventassignments ea 
+       JOIN technicians t ON t.id = ea.technicianid 
+       JOIN events e ON e.id = ea.eventid 
+       WHERE ea.eventid = ? 
+       ORDER BY ea.assignmentdate ASC, ea.starttime ASC, ea.createdat ASC`,
       [eventId]
     );
     res.json(assignments);
@@ -23,307 +24,263 @@ router.get('/events/:eventId/assignments', async (req, res, next) => {
   }
 });
 
-// GET assignments for a specific date and location
-router.get('/events/:eventId/assignments/slot/:date/:location', async (req, res, next) => {
+// POST /api/events/{eventId}/assignments - Create a new assignment
+router.post('/events/:eventId/assignments', async (req, res, next) => {
   try {
-    const { eventId, date, location } = req.params;
-    const assignments = await query(
-      `SELECT ea.*, t.name as tech_name
-       FROM event_assignments ea
-       LEFT JOIN technicians t ON ea.technician_id = t.id
-       WHERE ea.event_id = ? AND ea.assignment_date = ? AND ea.location = ?
-       ORDER BY ea.start_time`,
-      [eventId, date, location]
-    );
-    res.json(assignments);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET single assignment
-router.get('/assignments/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const [assignment] = await query(
-      `SELECT ea.*, t.name as tech_name
-       FROM event_assignments ea
-       LEFT JOIN technicians t ON ea.technician_id = t.id
-       WHERE ea.id = ?`,
-      [id]
-    );
-    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
-    res.json(assignment);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// POST create assignment
-router.post('/assignments', async (req, res, next) => {
-  try {
+    const { eventId } = req.params;
+    const id = uuid();
     const {
-      event_id,
-      requirement_id,
-      technician_id,
+      technicianid,
       position,
-      location,
-      assignment_date,
-      start_time,
-      end_time,
-      hours_worked,
-      rate_type,
-      calculated_pay,
-      customer_bill,
+      assignmentdate,
+      starttime,
+      endtime,
+      hoursworked,
+      basehours,
+      othours,
+      dothours,
+      ratetype,
+      techhourlyrate,
+      techhalfdayrate,
+      techfulldayrate,
+      billhourlyrate,
+      billhalfdayrate,
+      billfulldayrate,
+      calculatedpay,
+      customerbill,
+      requirementid,
       notes,
-      base_hours,
-      ot_hours,
-      dt_hours
     } = req.body;
 
-    const id = uuid();
+    console.log('Creating assignment', {
+      eventId,
+      technicianid,
+      requirementid,
+      assignmentdate,
+      starttime,
+      endtime,
+    });
+
+    // 21 VALUES for 21 COLUMNS - CORRECTED
     await run(
-      `INSERT INTO event_assignments 
-       (id, event_id, requirement_id, technician_id, position, location, assignment_date, 
-        start_time, end_time, hours_worked, rate_type, calculated_pay, customer_bill, 
-        notes, base_hours, ot_hours, dt_hours, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO eventassignments 
+        (id, eventid, technicianid, position, assignmentdate, starttime, endtime, 
+         hoursworked, basehours, othours, dothours, ratetype, 
+         techhourlyrate, techhalfdayrate, techfulldayrate, 
+         billhourlyrate, billhalfdayrate, billfulldayrate, 
+         calculatedpay, customerbill, requirementid) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        event_id,
-        requirement_id || null,
-        technician_id,
+        eventId,
+        technicianid,
         position || null,
-        location || null,
-        assignment_date || null,
-        start_time || null,
-        end_time || null,
-        hours_worked || 0,
-        rate_type || 'hourly',
-        calculated_pay || 0,
-        customer_bill || 0,
-        notes || null,
-        base_hours || 0,
-        ot_hours || 0,
-        dt_hours || 0,
-        new Date().toISOString()
+        assignmentdate || null,
+        starttime || null,
+        endtime || null,
+        parseFloat(hoursworked) || 0,
+        parseFloat(basehours) || 0,
+        parseFloat(othours) || 0,
+        parseFloat(dothours) || 0,
+        ratetype || null,
+        techhourlyrate || null,
+        techhalfdayrate || null,
+        techfulldayrate || null,
+        billhourlyrate || null,
+        billhalfdayrate || null,
+        billfulldayrate || null,
+        parseFloat(calculatedpay) || 0,
+        parseFloat(customerbill) || 0,
+        requirementid || null,
       ]
     );
 
-    const [assignment] = await query('SELECT * FROM event_assignments WHERE id = ?', [id]);
-    res.status(201).json(assignment);
+    const assignment = await query(
+      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
+              e.name AS eventname, e.clientname 
+       FROM eventassignments ea 
+       JOIN technicians t ON t.id = ea.technicianid 
+       JOIN events e ON e.id = ea.eventid 
+       WHERE ea.id = ?`,
+      [id]
+    );
+
+    console.log('Assignment created', assignment[0].id);
+    res.status(201).json(assignment[0]);
   } catch (err) {
+    console.error('Error creating assignment:', err.message);
     next(err);
   }
 });
 
-// PATCH update assignment
+// PATCH /api/assignments/{id} - Update a single field (inline edit)
 router.patch('/assignments/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
+      hoursworked,
+      basehours,
+      othours,
+      dothours,
       position,
-      location,
-      assignment_date,
-      start_time,
-      end_time,
-      hours_worked,
-      rate_type,
-      calculated_pay,
-      customer_bill,
+      assignmentdate,
+      starttime,
+      endtime,
+      ratetype,
+      techhourlyrate,
+      techhalfdayrate,
+      techfulldayrate,
+      billhourlyrate,
+      billhalfdayrate,
+      billfulldayrate,
+      calculatedpay,
+      customerbill,
       notes,
-      base_hours,
-      ot_hours,
-      dt_hours,
-      tech_hourly_rate,
-      tech_halfday_rate,
-      tech_fullday_rate,
-      bill_hourly_rate,
-      bill_halfday_rate,
-      bill_fullday_rate
     } = req.body;
 
-    // Build dynamic update
-    const updates = [];
-    const values = [];
+    // Build dynamic UPDATE based on provided fields
+    const updates = {};
+    if (hoursworked !== undefined) updates.hoursworked = hoursworked;
+    if (basehours !== undefined) updates.basehours = basehours;
+    if (othours !== undefined) updates.othours = othours;
+    if (dothours !== undefined) updates.dothours = dothours;
+    if (position !== undefined) updates.position = position;
+    if (assignmentdate !== undefined) updates.assignmentdate = assignmentdate;
+    if (starttime !== undefined) updates.starttime = starttime;
+    if (endtime !== undefined) updates.endtime = endtime;
+    if (ratetype !== undefined) updates.ratetype = ratetype;
+    if (techhourlyrate !== undefined) updates.techhourlyrate = techhourlyrate;
+    if (techhalfdayrate !== undefined) updates.techhalfdayrate = techhalfdayrate;
+    if (techfulldayrate !== undefined) updates.techfulldayrate = techfulldayrate;
+    if (billhourlyrate !== undefined) updates.billhourlyrate = billhourlyrate;
+    if (billhalfdayrate !== undefined) updates.billhalfdayrate = billhalfdayrate;
+    if (billfulldayrate !== undefined) updates.billfulldayrate = billfulldayrate;
+    if (calculatedpay !== undefined) updates.calculatedpay = calculatedpay;
+    if (customerbill !== undefined) updates.customerbill = customerbill;
+    if (notes !== undefined) updates.notes = notes;
 
-    if (position !== undefined) {
-      updates.push('position = ?');
-      values.push(position);
-    }
-    if (location !== undefined) {
-      updates.push('location = ?');
-      values.push(location);
-    }
-    if (assignment_date !== undefined) {
-      updates.push('assignment_date = ?');
-      values.push(assignment_date);
-    }
-    if (start_time !== undefined) {
-      updates.push('start_time = ?');
-      values.push(start_time);
-    }
-    if (end_time !== undefined) {
-      updates.push('end_time = ?');
-      values.push(end_time);
-    }
-    if (hours_worked !== undefined) {
-      updates.push('hours_worked = ?');
-      values.push(hours_worked);
-    }
-    if (rate_type !== undefined) {
-      updates.push('rate_type = ?');
-      values.push(rate_type);
-    }
-    if (calculated_pay !== undefined) {
-      updates.push('calculated_pay = ?');
-      values.push(calculated_pay);
-    }
-    if (customer_bill !== undefined) {
-      updates.push('customer_bill = ?');
-      values.push(customer_bill);
-    }
-    if (notes !== undefined) {
-      updates.push('notes = ?');
-      values.push(notes);
-    }
-    if (base_hours !== undefined) {
-      updates.push('base_hours = ?');
-      values.push(base_hours);
-    }
-    if (ot_hours !== undefined) {
-      updates.push('ot_hours = ?');
-      values.push(ot_hours);
-    }
-    if (dt_hours !== undefined) {
-      updates.push('dt_hours = ?');
-      values.push(dt_hours);
-    }
-    if (tech_hourly_rate !== undefined) {
-      updates.push('tech_hourly_rate = ?');
-      values.push(tech_hourly_rate);
-    }
-    if (tech_halfday_rate !== undefined) {
-      updates.push('tech_halfday_rate = ?');
-      values.push(tech_halfday_rate);
-    }
-    if (tech_fullday_rate !== undefined) {
-      updates.push('tech_fullday_rate = ?');
-      values.push(tech_fullday_rate);
-    }
-    if (bill_hourly_rate !== undefined) {
-      updates.push('bill_hourly_rate = ?');
-      values.push(bill_hourly_rate);
-    }
-    if (bill_halfday_rate !== undefined) {
-      updates.push('bill_halfday_rate = ?');
-      values.push(bill_halfday_rate);
-    }
-    if (bill_fullday_rate !== undefined) {
-      updates.push('bill_fullday_rate = ?');
-      values.push(bill_fullday_rate);
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
     }
 
-    updates.push('updated_at = ?');
-    values.push(new Date().toISOString());
+    updates.updatedat = new Date().toISOString();
+
+    const setClause = Object.keys(updates)
+      .map((key) => `${key} = ?`)
+      .join(', ');
+
+    const values = Object.values(updates);
     values.push(id);
 
-    if (updates.length > 1) {
-      const sql = `UPDATE event_assignments SET ${updates.join(', ')} WHERE id = ?`;
-      await run(sql, values);
+    await run(
+      `UPDATE eventassignments SET ${setClause} WHERE id = ?`,
+      values
+    );
+
+    const assignment = await query(
+      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
+              e.name AS eventname, e.clientname 
+       FROM eventassignments ea 
+       JOIN technicians t ON t.id = ea.technicianid 
+       JOIN events e ON e.id = ea.eventid 
+       WHERE ea.id = ?`,
+      [id]
+    );
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
     }
 
-    const [assignment] = await query('SELECT * FROM event_assignments WHERE id = ?', [id]);
-    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
-    res.json(assignment);
+    res.json(assignment[0]);
   } catch (err) {
     next(err);
   }
 });
 
-// DELETE assignment
+// PUT /api/assignments/{id} - Full update of an assignment (all fields)
+router.put('/assignments/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      position,
+      assignmentdate,
+      starttime,
+      endtime,
+      hoursworked,
+      basehours,
+      othours,
+      dothours,
+      ratetype,
+      techhourlyrate,
+      techhalfdayrate,
+      techfulldayrate,
+      billhourlyrate,
+      billhalfdayrate,
+      billfulldayrate,
+      calculatedpay,
+      customerbill,
+      notes,
+    } = req.body;
+
+    await run(
+      `UPDATE eventassignments 
+       SET position = ?, assignmentdate = ?, starttime = ?, endtime = ?, 
+           hoursworked = ?, basehours = ?, othours = ?, dothours = ?,
+           ratetype = ?, 
+           techhourlyrate = ?, techhalfdayrate = ?, techfulldayrate = ?,
+           billhourlyrate = ?, billhalfdayrate = ?, billfulldayrate = ?,
+           calculatedpay = ?, customerbill = ?, notes = ?, updatedat = ?
+       WHERE id = ?`,
+      [
+        position || null,
+        assignmentdate || null,
+        starttime || null,
+        endtime || null,
+        parseFloat(hoursworked) || 0,
+        parseFloat(basehours) || 0,
+        parseFloat(othours) || 0,
+        parseFloat(dothours) || 0,
+        ratetype || null,
+        techhourlyrate || null,
+        techhalfdayrate || null,
+        techfulldayrate || null,
+        billhourlyrate || null,
+        billhalfdayrate || null,
+        billfulldayrate || null,
+        parseFloat(calculatedpay) || 0,
+        parseFloat(customerbill) || 0,
+        notes || null,
+        new Date().toISOString(),
+        id,
+      ]
+    );
+
+    const assignment = await query(
+      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
+              e.name AS eventname, e.clientname 
+       FROM eventassignments ea 
+       JOIN technicians t ON t.id = ea.technicianid 
+       JOIN events e ON e.id = ea.eventid 
+       WHERE ea.id = ?`,
+      [id]
+    );
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    res.json(assignment[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/assignments/{id} - Delete an assignment
 router.delete('/assignments/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    await run('DELETE FROM event_assignments WHERE id = ?', [id]);
+    await run('DELETE FROM eventassignments WHERE id = ?', [id]);
     res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET technician availability for a specific time slot
-router.get('/events/:eventId/tech-availability/:date/:startTime/:endTime', async (req, res, next) => {
-  try {
-    const { eventId, date, startTime, endTime } = req.params;
-
-    // Get all techs
-    const allTechs = await query('SELECT * FROM technicians ORDER BY name');
-
-    // Get assignments for this time slot
-    const conflicts = await query(
-      `SELECT DISTINCT technician_id FROM event_assignments
-       WHERE assignment_date = ? 
-       AND (
-         (start_time < ? AND end_time > ?)
-         OR (start_time < ? AND end_time > ?)
-         OR (start_time >= ? AND end_time <= ?)
-       )`,
-      [date, endTime, startTime, endTime, startTime, startTime, endTime]
-    );
-
-    const conflictIds = conflicts.map(c => c.technician_id);
-
-    const available = allTechs.filter(t => !conflictIds.includes(t.id));
-
-    res.json({
-      available,
-      conflicts: allTechs.filter(t => conflictIds.includes(t.id))
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// BULK assign technicians
-router.post('/assignments/bulk', async (req, res, next) => {
-  try {
-    const assignments = req.body; // Array of assignment objects
-
-    const created = [];
-    for (const assignment of assignments) {
-      const id = uuid();
-      await run(
-        `INSERT INTO event_assignments 
-         (id, event_id, requirement_id, technician_id, position, location, assignment_date, 
-          start_time, end_time, hours_worked, rate_type, calculated_pay, customer_bill, 
-          notes, base_hours, ot_hours, dt_hours, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          id,
-          assignment.event_id,
-          assignment.requirement_id || null,
-          assignment.technician_id,
-          assignment.position || null,
-          assignment.location || null,
-          assignment.assignment_date || null,
-          assignment.start_time || null,
-          assignment.end_time || null,
-          assignment.hours_worked || 0,
-          assignment.rate_type || 'hourly',
-          assignment.calculated_pay || 0,
-          assignment.customer_bill || 0,
-          assignment.notes || null,
-          assignment.base_hours || 0,
-          assignment.ot_hours || 0,
-          assignment.dt_hours || 0,
-          new Date().toISOString()
-        ]
-      );
-      created.push(id);
-    }
-
-    res.status(201).json({ created, count: created.length });
   } catch (err) {
     next(err);
   }
