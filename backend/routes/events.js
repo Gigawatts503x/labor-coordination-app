@@ -34,20 +34,18 @@ router.post('/events', async (req, res, next) => {
 
     await run(
       `INSERT INTO events (id, name, client_name, client_contact, client_phone, client_email, client_address, po_number, start_date, end_date, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        name,
-        client_name,
-        client_contact,
-        client_phone || null,
-        client_email || null,
-        client_address || null,
-        po_number || null,
-        start_date || null,
-        end_date || null,
-        new Date().toISOString()
-      ]
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      name,
+      client_name,
+      client_contact,
+      client_phone || null,
+      client_email || null,
+      client_address || null,
+      po_number || null,
+      start_date || null,
+      end_date || null,
+      new Date().toISOString()
     );
 
     const [event] = await query('SELECT * FROM events WHERE id = ?', [id]);
@@ -86,39 +84,71 @@ router.put('/events/:id', async (req, res, next) => {
       total_customer_billing
     } = req.body;
 
-    await run(
-      `UPDATE events SET
-      name = ?,
-      client_name = ?,
-      client_contact = ?,
-      client_phone = ?,
-      client_email = ?,
-      client_address = ?,
-      po_number = ?,
-      start_date = ?,
-      end_date = ?,
-      total_tech_payout = ?,
-      total_labor_cost = ?,
-      total_customer_billing = ?,
-      updated_at = ?
-      WHERE id = ?`,
-      [
-        name,
-        client_name,
-        client_contact,
-        client_phone || null,
-        client_email || null,
-        client_address || null,
-        po_number || null,
-        start_date || null,
-        end_date || null,
-        total_tech_payout || 0,
-        total_labor_cost || 0,
-        total_customer_billing || 0,
-        new Date().toISOString(),
-        id
-      ]
-    );
+    // Build dynamic UPDATE query - only update fields that were provided
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (client_name !== undefined) {
+      updates.push('client_name = ?');
+      values.push(client_name);
+    }
+    if (client_contact !== undefined) {
+      updates.push('client_contact = ?');
+      values.push(client_contact);
+    }
+    if (client_phone !== undefined) {
+      updates.push('client_phone = ?');
+      values.push(client_phone || null);
+    }
+    if (client_email !== undefined) {
+      updates.push('client_email = ?');
+      values.push(client_email || null);
+    }
+    if (client_address !== undefined) {
+      updates.push('client_address = ?');
+      values.push(client_address || null);
+    }
+    if (po_number !== undefined) {
+      updates.push('po_number = ?');
+      values.push(po_number || null);
+    }
+    if (start_date !== undefined) {
+      updates.push('start_date = ?');
+      values.push(start_date || null);
+    }
+    if (end_date !== undefined) {
+      updates.push('end_date = ?');
+      values.push(end_date || null);
+    }
+    if (total_tech_payout !== undefined) {
+      updates.push('total_tech_payout = ?');
+      values.push(total_tech_payout || 0);
+    }
+    if (total_labor_cost !== undefined) {
+      updates.push('total_labor_cost = ?');
+      values.push(total_labor_cost || 0);
+    }
+    if (total_customer_billing !== undefined) {
+      updates.push('total_customer_billing = ?');
+      values.push(total_customer_billing || 0);
+    }
+
+    // Always update the updated_at timestamp
+    updates.push('updated_at = ?');
+    values.push(new Date().toISOString());
+
+    // Add the WHERE clause parameter
+    values.push(id);
+
+    // Only execute if there are updates
+    if (updates.length > 1) { // > 1 because updated_at is always added
+      const updateSQL = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
+      await run(updateSQL, values);
+    }
 
     const [event] = await query('SELECT * FROM events WHERE id = ?', [id]);
     if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -179,26 +209,24 @@ router.put('/settings', async (req, res, next) => {
     // Update global settings
     await run(
       `INSERT INTO settings (id, halfday_hours, fullday_hours, ot_threshold, dot_threshold, dot_start_hour, tech_base_rate, customer_base_rate, updated_at)
-      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-      halfday_hours = EXCLUDED.halfday_hours,
-      fullday_hours = EXCLUDED.fullday_hours,
-      ot_threshold = EXCLUDED.ot_threshold,
-      dot_threshold = EXCLUDED.dot_threshold,
-      dot_start_hour = EXCLUDED.dot_start_hour,
-      tech_base_rate = EXCLUDED.tech_base_rate,
-      customer_base_rate = EXCLUDED.customer_base_rate,
-      updated_at = EXCLUDED.updated_at`,
-      [
-        halfday_hours,
-        fullday_hours,
-        ot_threshold,
-        dot_threshold,
-        dot_start_hour,
-        tech_base_rate,
-        customer_base_rate,
-        new Date().toISOString()
-      ]
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+halfday_hours = EXCLUDED.halfday_hours,
+fullday_hours = EXCLUDED.fullday_hours,
+ot_threshold = EXCLUDED.ot_threshold,
+dot_threshold = EXCLUDED.dot_threshold,
+dot_start_hour = EXCLUDED.dot_start_hour,
+tech_base_rate = EXCLUDED.tech_base_rate,
+customer_base_rate = EXCLUDED.customer_base_rate,
+updated_at = EXCLUDED.updated_at`,
+      halfday_hours,
+      fullday_hours,
+      ot_threshold,
+      dot_threshold,
+      dot_start_hour,
+      tech_base_rate,
+      customer_base_rate,
+      new Date().toISOString()
     );
 
     res.json({ success: true });
@@ -235,19 +263,18 @@ router.post('/events/:eventId/settings', async (req, res, next) => {
     } = req.body;
 
     const id = uuid();
+
     await run(
       `INSERT INTO rate_configs (id, event_id, overtime_threshold, overtime_multiplier, billing_multiplier, rounding_mode, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        eventId,
-        overtime_threshold || 8,
-        overtime_multiplier || 1.5,
-        billing_multiplier || 1.3,
-        rounding_mode || 'round',
-        new Date().toISOString(),
-        new Date().toISOString()
-      ]
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      eventId,
+      overtime_threshold || 8,
+      overtime_multiplier || 1.5,
+      billing_multiplier || 1.3,
+      rounding_mode || 'round',
+      new Date().toISOString(),
+      new Date().toISOString()
     );
 
     const [settings] = await query('SELECT * FROM rate_configs WHERE id = ?', [id]);
@@ -269,21 +296,19 @@ router.put('/events/:eventId/settings/:settingsId', async (req, res, next) => {
 
     await run(
       `UPDATE rate_configs SET
-      overtime_threshold = ?,
-      overtime_multiplier = ?,
-      billing_multiplier = ?,
-      rounding_mode = ?,
-      updated_at = ?
-      WHERE id = ? AND event_id = ?`,
-      [
-        overtime_threshold || 8,
-        overtime_multiplier || 1.5,
-        billing_multiplier || 1.3,
-        rounding_mode || 'round',
-        new Date().toISOString(),
-        settingsId,
-        eventId
-      ]
+overtime_threshold = ?,
+overtime_multiplier = ?,
+billing_multiplier = ?,
+rounding_mode = ?,
+updated_at = ?
+WHERE id = ? AND event_id = ?`,
+      overtime_threshold || 8,
+      overtime_multiplier || 1.5,
+      billing_multiplier || 1.3,
+      rounding_mode || 'round',
+      new Date().toISOString(),
+      settingsId,
+      eventId
     );
 
     const [settings] = await query('SELECT * FROM rate_configs WHERE id = ?', [settingsId]);
