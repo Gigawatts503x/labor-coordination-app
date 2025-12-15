@@ -1,5 +1,5 @@
 // frontend/src/pages/ScheduleGrid.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
 import { useAssignments } from '../hooks/useAssignments';
@@ -13,7 +13,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTech, setSelectedTech] = useState('all');
   const [selectedEvent, setSelectedEvent] = useState('all');
-  const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
 
   // Parse date string to Date object
   const parseDate = (dateStr) => {
@@ -60,16 +59,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     );
   };
 
-  // Calculate time slot from hours
-  const getTimeSlot = (startTime, hoursWorked) => {
-    const [hours, mins] = startTime.split(':');
-    const startHour = parseInt(hours);
-    const startMin = parseInt(mins);
-    const endHour = Math.floor((startHour * 60 + startMin + hoursWorked * 60) / 60);
-    const endMin = (startHour * 60 + startMin + hoursWorked * 60) % 60;
-    return `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')} - ${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-  };
-
   // Get availability status
   const getTechAvailability = (techId) => {
     const dayAssignments = getTechAssignmentsForDay(techId);
@@ -98,8 +87,9 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     setSelectedDate(new Date().toISOString().split('T')[0]);
   };
 
+  // Show loading state
   if (eventsLoading || techsLoading || assignLoading) {
-    return <div className="schedule-grid loading">Loading schedule...</div>;
+    return <div className="schedule-grid loading">📅 Loading schedule...</div>;
   }
 
   const filteredAssignments = getFilteredAssignments();
@@ -126,28 +116,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
           <span className="date-display">{formatDate(parseDate(selectedDate))}</span>
           <button onClick={handleNextDate} className="btn-nav">→</button>
           <button onClick={handleToday} className="btn-today">Today</button>
-        </div>
-
-        {/* View Mode */}
-        <div className="view-mode">
-          <button 
-            className={`mode-btn ${viewMode === 'day' ? 'active' : ''}`}
-            onClick={() => setViewMode('day')}
-          >
-            Day
-          </button>
-          <button 
-            className={`mode-btn ${viewMode === 'week' ? 'active' : ''}`}
-            onClick={() => setViewMode('week')}
-          >
-            Week
-          </button>
-          <button 
-            className={`mode-btn ${viewMode === 'month' ? 'active' : ''}`}
-            onClick={() => setViewMode('month')}
-          >
-            Month
-          </button>
         </div>
 
         {/* Filters */}
