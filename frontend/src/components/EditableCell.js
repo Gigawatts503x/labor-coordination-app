@@ -1,38 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+// frontend/src/components/EditableCell.js
+import React, { useState } from 'react';
 
-/**
- * EditableCell - A table cell content that becomes editable on double-click
- * Supports text, date, time, and number inputs
- * FIXED: Properly displays value and handles inline editing without affecting other cells
- */
-
-const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
+const EditableCell = ({ value, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
-  const inputRef = useRef(null);
-
-  // Update local state when prop changes (when data refreshes)
-  useEffect(() => {
-    setEditValue(value);
-  }, [value]);
-
-  // Focus and select text when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-  };
 
   const handleSave = () => {
-    // Only call onSave if value actually changed
-    if (editValue !== value) {
-      onSave(editValue);
-    }
+    onSave(editValue);
     setIsEditing(false);
   };
 
@@ -41,44 +15,39 @@ const EditableCell = ({ value, type = 'text', onSave, displayValue }) => {
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
-
   if (isEditing) {
     return (
-      <td>
+      <td style={{ padding: '0.5rem' }}>
         <input
-          ref={inputRef}
-          type={type}
+          type="text"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
           style={{
             width: '100%',
-            padding: '6px',
-            border: '2px solid #1a73e8',
+            padding: '0.5rem',
             borderRadius: '4px',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-            boxSizing: 'border-box'
+            border: '1px solid var(--color-border)',
+            backgroundColor: 'var(--color-background)',
+            color: 'var(--color-text)',
           }}
+          onBlur={handleSave}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave();
+            if (e.key === 'Escape') handleCancel();
+          }}
+          autoFocus
         />
       </td>
     );
   }
 
-  // Display the actual value, or displayValue override, or dash if empty
-  const displayText = displayValue !== undefined ? displayValue : (value || '—');
-
   return (
-    <td onClick={handleDoubleClick} style={{ cursor: 'pointer' }}>
-      {displayText}
+    <td
+      onClick={() => setIsEditing(true)}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+      title="Click to edit"
+    >
+      {value || '—'}
     </td>
   );
 };

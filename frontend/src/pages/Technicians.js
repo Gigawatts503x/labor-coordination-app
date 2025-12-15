@@ -1,25 +1,36 @@
 // frontend/src/pages/Technicians.js
+// Technicians management page - CRUD operations for technician records
+
 import React, { useState } from 'react';
 import { useTechnicians } from '../hooks/useTechnicians';
 import '../styles/Technicians.css';
 
 const Technicians = () => {
-  const { technicians, loading, error, addTechnician, updateTech, deleteTech } = useTechnicians();
+  const { technicians, loading, error, addTechnician, updateTech, deleteTech, refetch } =
+    useTechnicians();
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     position: '',
-    hourly_rate: '',
-    half_day_rate: '',
-    full_day_rate: '',
+    hourlyrate: '',
+    halfdayrate: '',
+    fulldayrate: '',
   });
+
+  const [formError, setFormError] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value === '' ? '' : (name.includes('rate') ? parseFloat(value) || '' : value),
+      [name]:
+        value === ''
+          ? ''
+          : name.includes('rate')
+            ? parseFloat(value) || ''
+            : value,
     }));
   };
 
@@ -27,40 +38,64 @@ const Technicians = () => {
     setFormData({
       name: '',
       position: '',
-      hourly_rate: '',
-      half_day_rate: '',
-      full_day_rate: '',
+      hourlyrate: '',
+      halfdayrate: '',
+      fulldayrate: '',
     });
     setEditingId(null);
+    setFormError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.name) {
+      setFormError('Technician name is required');
+      return;
+    }
+
     try {
+      setFormError(null);
+
       if (editingId) {
         await updateTech(editingId, formData);
+        alert('✅ Technician updated successfully!');
       } else {
         await addTechnician(formData);
+        alert('✅ Technician added successfully!');
       }
+
       resetForm();
       setShowForm(false);
+      await refetch();
     } catch (err) {
       console.error('Failed to save technician:', err);
+      setFormError(err.message || 'Failed to save technician');
     }
   };
 
   const handleEdit = (tech) => {
-    setFormData(tech);
+    setFormData({
+      name: tech.name || '',
+      position: tech.position || '',
+      hourlyrate: tech.hourlyrate || '',
+      halfdayrate: tech.halfdayrate || '',
+      fulldayrate: tech.fulldayrate || '',
+    });
     setEditingId(tech.id);
     setShowForm(true);
+    setFormError(null);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this technician?')) {
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Delete technician "${name}"? This cannot be undone.`)) {
       try {
         await deleteTech(id);
+        alert('✅ Technician deleted successfully!');
+        await refetch();
       } catch (err) {
         console.error('Failed to delete technician:', err);
+        alert(`Error: ${err.message}`);
       }
     }
   };
@@ -70,138 +105,157 @@ const Technicians = () => {
     setShowForm(false);
   };
 
-  if (loading) return <div className="technicians">Loading technicians...</div>;
-  if (error) return <div className="technicians error">Error: {error}</div>;
+  if (loading) {
+    return <div className="technicians-page loading">Loading technicians...</div>;
+  }
 
   return (
-    <div className="technicians">
-      <header className="technicians-header">
-        <h1>Technicians</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            resetForm();
-            setShowForm(!showForm);
-          }}
-        >
-          {showForm ? 'Cancel' : '+ New Technician'}
+    <div className="technicians-page">
+      <header className="page-header">
+        <h1>Technicians Management</h1>
+        <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Cancel' : '+ Add Technician'}
         </button>
       </header>
 
+      {error && <div className="error-banner">Error: {error}</div>}
+
+      {/* Add/Edit Form */}
       {showForm && (
         <form className="technician-form" onSubmit={handleSubmit}>
           <h2>{editingId ? 'Edit Technician' : 'Add New Technician'}</h2>
 
+          {formError && <div className="form-error">{formError}</div>}
+
           <div className="form-group">
-            <label>Name *</label>
+            <label htmlFor="name">Name *</label>
             <input
+              id="name"
               type="text"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
+              placeholder="Technician name"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Position *</label>
+            <label htmlFor="position">Position</label>
             <input
+              id="position"
               type="text"
               name="position"
-              placeholder="e.g., V1, V2, Lead Tech"
               value={formData.position}
               onChange={handleInputChange}
-              required
+              placeholder="e.g., Lighting Tech, Sound Engineer"
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Hourly Rate ($)</label>
+              <label htmlFor="hourlyrate">Hourly Rate ($)</label>
               <input
+                id="hourlyrate"
                 type="number"
-                name="hourly_rate"
+                name="hourlyrate"
+                value={formData.hourlyrate}
+                onChange={handleInputChange}
                 step="0.01"
                 min="0"
-                value={formData.hourly_rate}
-                onChange={handleInputChange}
-                placeholder="0.00"
+                placeholder="50.00"
               />
             </div>
+
             <div className="form-group">
-              <label>Half Day Rate ($)</label>
+              <label htmlFor="halfdayrate">Half Day Rate ($)</label>
               <input
+                id="halfdayrate"
                 type="number"
-                name="half_day_rate"
+                name="halfdayrate"
+                value={formData.halfdayrate}
+                onChange={handleInputChange}
                 step="0.01"
                 min="0"
-                value={formData.half_day_rate}
-                onChange={handleInputChange}
-                placeholder="0.00"
+                placeholder="250.00"
               />
             </div>
+
             <div className="form-group">
-              <label>Full Day Rate ($)</label>
+              <label htmlFor="fulldayrate">Full Day Rate ($)</label>
               <input
+                id="fulldayrate"
                 type="number"
-                name="full_day_rate"
+                name="fulldayrate"
+                value={formData.fulldayrate}
+                onChange={handleInputChange}
                 step="0.01"
                 min="0"
-                value={formData.full_day_rate}
-                onChange={handleInputChange}
-                placeholder="0.00"
+                placeholder="500.00"
               />
             </div>
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-success">
-              {editingId ? 'Update' : 'Add'} Technician
+            <button type="submit" className="btn-primary">
+              {editingId ? 'Update Technician' : 'Add Technician'}
             </button>
-            <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+            <button type="button" className="btn-secondary" onClick={handleCancel}>
               Cancel
             </button>
           </div>
         </form>
       )}
 
-      <div className="technicians-list">
-        <h2>Team Members ({technicians.length})</h2>
+      {/* Technicians List */}
+      <section className="technicians-section">
+        <h2>Technicians ({technicians.length})</h2>
+
         {technicians.length === 0 ? (
-          <p className="empty-state">No technicians yet. Add one to get started!</p>
+          <div className="empty-state">
+            <p>👤 No technicians yet. Add one to get started!</p>
+          </div>
         ) : (
-          <div className="table-container">
+          <div className="table-wrapper">
             <table className="technicians-table">
               <thead>
                 <tr>
                   <th>Name</th>
                   <th>Position</th>
                   <th>Hourly Rate</th>
-                  <th>Half Day</th>
-                  <th>Full Day</th>
+                  <th>Half Day Rate</th>
+                  <th>Full Day Rate</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {technicians.map((tech) => (
                   <tr key={tech.id}>
-                    <td className="name">{tech.name}</td>
-                    <td>{tech.position}</td>
-                    <td>${parseFloat(tech.hourly_rate || 0).toFixed(2)}</td>
-                    <td>${parseFloat(tech.half_day_rate || 0).toFixed(2)}</td>
-                    <td>${parseFloat(tech.full_day_rate || 0).toFixed(2)}</td>
+                    <td className="tech-name">{tech.name}</td>
+                    <td>{tech.position || '—'}</td>
+                    <td className="rate">
+                      ${parseFloat(tech.hourlyrate || 0).toFixed(2)}
+                    </td>
+                    <td className="rate">
+                      ${parseFloat(tech.halfdayrate || 0).toFixed(2)}
+                    </td>
+                    <td className="rate">
+                      ${parseFloat(tech.fulldayrate || 0).toFixed(2)}
+                    </td>
                     <td className="actions">
                       <button
-                        className="btn btn-small btn-edit"
+                        className="btn-edit"
                         onClick={() => handleEdit(tech)}
+                        title="Edit"
                       >
-                        Edit
+                        ✏️ Edit
                       </button>
                       <button
-                        className="btn btn-small btn-delete"
-                        onClick={() => handleDelete(tech.id)}
+                        className="btn-delete"
+                        onClick={() => handleDelete(tech.id, tech.name)}
+                        title="Delete"
                       >
-                        Delete
+                        🗑️ Delete
                       </button>
                     </td>
                   </tr>
@@ -210,10 +264,23 @@ const Technicians = () => {
             </table>
           </div>
         )}
-      </div>
+      </section>
+
+      {/* Stats Footer */}
+      {technicians.length > 0 && (
+        <footer className="page-footer">
+          <p>Total Technicians: {technicians.length}</p>
+          <p>
+            Average Hourly Rate: $
+            {(
+              technicians.reduce((sum, t) => sum + (parseFloat(t.hourlyrate) || 0), 0) /
+              technicians.length
+            ).toFixed(2)}
+          </p>
+        </footer>
+      )}
     </div>
   );
 };
 
 export default Technicians;
-

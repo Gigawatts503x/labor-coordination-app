@@ -1,28 +1,28 @@
 // frontend/src/hooks/useRequirements.js
-import { useState, useEffect } from 'react';
+// Hook for managing event requirements
 
+import { useState, useEffect } from 'react';
 import {
   getEventRequirements,
-  getEventRequirementsWithCoverage,
   createRequirement,
   updateRequirement,
-  deleteRequirement
+  deleteRequirement,
 } from '../utils/api';
 
 /**
  * Hook for managing event requirements with granular update support
  *
  * Features:
- * - Fetch requirements for an event (with or without coverage data)
+ * - Fetch requirements for an event
  * - Add new requirement
  * - Remove requirement
  * - Update requirement field (patch) for inline cell edits
  * - Update full requirement
  * - Refresh requirements from server
  *
- * Supports requirement_date field for date-based organization
+ * All fields use camelCase: requirementdate, roomorlocation, starttime, endtime, techsneeded, etc.
  */
-export const useRequirements = (eventId, includeWithCoverage = true) => {
+export const useRequirements = (eventId) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,18 +33,19 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
       if (!eventId) return;
       try {
         setLoading(true);
-        const response = includeWithCoverage
-          ? await getEventRequirementsWithCoverage(eventId)
-          : await getEventRequirements(eventId);
-        setRequirements(response.data);
+        setError(null);
+        const response = await getEventRequirements(eventId);
+        setRequirements(Array.isArray(response) ? response : response.data || []);
       } catch (err) {
         setError(err.message);
+        console.error('Error fetching requirements:', err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchRequirements();
-  }, [eventId, includeWithCoverage]);
+  }, [eventId]);
 
   /**
    * Refresh requirements from server
@@ -52,27 +53,27 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
   const refreshRequirements = async () => {
     if (!eventId) return;
     try {
-      const response = includeWithCoverage
-        ? await getEventRequirementsWithCoverage(eventId)
-        : await getEventRequirements(eventId);
-      setRequirements(response.data);
+      setError(null);
+      const response = await getEventRequirements(eventId);
+      setRequirements(Array.isArray(response) ? response : response.data || []);
     } catch (err) {
       setError(err.message);
+      console.error('Error refreshing requirements:', err);
     }
   };
 
   /**
    * Add a new requirement to the event
-   * @param {object} data - Requirement data (requirement_date, room_or_location, start_time, end_time, position, techs_needed)
+   * @param {object} data - Requirement data (requirementdate, roomorlocation, starttime, endtime, position, techsneeded)
    */
   const addRequirement = async (data) => {
     try {
-      const response = await createRequirement({
-        event_id: eventId,
-        ...data
-      });
-      setRequirements([...requirements, response.data]);
-      return response.data;
+      const response = await createRequirement(eventId, data);
+      const newRequirement = Array.isArray(response)
+        ? response[0]
+        : response.data || response;
+      setRequirements([...requirements, newRequirement]);
+      return newRequirement;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -86,7 +87,7 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
   const removeRequirement = async (id) => {
     try {
       await deleteRequirement(id);
-      setRequirements(requirements.filter(r => r.id !== id));
+      setRequirements(requirements.filter((r) => r.id !== id));
     } catch (err) {
       setError(err.message);
       throw err;
@@ -97,21 +98,20 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
    * Update a single field on a requirement (PATCH)
    * Used for inline cell edits - sends only changed field
    *
-   * Supports requirement_date and all other fields
+   * Supports all fields: requirementdate, roomorlocation, starttime, endtime, position, techsneeded, etc.
    *
    * @param {string} id - Requirement ID
    * @param {object} updates - Object with field(s) to update
    * @example
-   * updateRequirementField('req-123', { requirement_date: '2025-12-15' })
-   * updateRequirementField('req-123', { room_or_location: 'Main Stage', techs_needed: 2 })
+   * updateRequirementField('req-123', { requirementdate: '2025-12-15' })
+   * updateRequirementField('req-123', { roomorlocation: 'Main Stage', techsneeded: 2 })
    */
   const updateRequirementField = async (id, updates) => {
     try {
       const response = await updateRequirement(id, updates);
-      setRequirements(requirements.map(r =>
-        r.id === id ? { ...r, ...response.data } : r
-      ));
-      return response.data;
+      const updated = Array.isArray(response) ? response[0] : response.data || response;
+      setRequirements(requirements.map((r) => (r.id === id ? { ...r, ...updated } : r)));
+      return updated;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -119,7 +119,7 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
   };
 
   /**
-   * Update full requirement (PUT)
+   * Update full requirement
    * For complete record updates
    *
    * @param {string} id - Requirement ID
@@ -128,10 +128,9 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
   const updateRequirementFull = async (id, updates) => {
     try {
       const response = await updateRequirement(id, updates);
-      setRequirements(requirements.map(r =>
-        r.id === id ? { ...r, ...response.data } : r
-      ));
-      return response.data;
+      const updated = Array.isArray(response) ? response[0] : response.data || response;
+      setRequirements(requirements.map((r) => (r.id === id ? { ...r, ...updated } : r)));
+      return updated;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -145,16 +144,8 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
    * @param {string} id - Requirement ID
    * @param {object} updates - Partial updates
    */
-  const updateRequirementLocal = async (id, updates) => {
-    try {
-      setRequirements(requirements.map(r =>
-        r.id === id ? { ...r, ...updates } : r
-      ));
-      return true;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
+  const updateRequirementLocal = (id, updates) => {
+    setRequirements(requirements.map((r) => (r.id === id ? { ...r, ...updates } : r)));
   };
 
   return {
@@ -163,9 +154,9 @@ export const useRequirements = (eventId, includeWithCoverage = true) => {
     error,
     addRequirement,
     removeRequirement,
-    updateRequirementField, // ✅ For inline cell edits (PATCH)
-    updateRequirementFull, // ✅ For full updates (PUT)
+    updateRequirementField, // For inline cell edits (PATCH)
+    updateRequirementFull, // For full updates
     updateRequirementLocal, // Optimistic local update
-    refreshRequirements
+    refreshRequirements,
   };
 };

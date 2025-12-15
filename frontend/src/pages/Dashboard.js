@@ -1,26 +1,23 @@
 // frontend/src/pages/Dashboard.js
+// Main dashboard - displays events list and allows event creation
+
 import React, { useState } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import EventDetails from './EventDetails';
 import '../styles/Dashboard.css';
-import TechSchedule from './TechSchedule';
-import GanttTimeline from './GanttTimeline';
-
-
 
 const Dashboard = () => {
   const { events, loading, error, addEvent } = useEvents();
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const [viewMode, setViewMode] = useState('events'); // 'events' or 'schedule'
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    client_name: '',
-    client_contact: '',
-    client_phone: '',
-    client_email: '',
-    client_address: '',
-    po_number: '',
+    clientname: '',
+    clientcontact: '',
+    clientphone: '',
+    clientemail: '',
+    clientaddress: '',
+    ponumber: '',
   });
 
   const handleInputChange = (e) => {
@@ -33,201 +30,258 @@ const Dashboard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.name) {
+      alert('Event name is required');
+      return;
+    }
+
     try {
       await addEvent(formData);
       setFormData({
         name: '',
-        client_name: '',
-        client_contact: '',
-        client_phone: '',
-        client_email: '',
-        client_address: '',
-        po_number: '',
+        clientname: '',
+        clientcontact: '',
+        clientphone: '',
+        clientemail: '',
+        clientaddress: '',
+        ponumber: '',
       });
       setShowForm(false);
+      alert('✅ Event created successfully!');
     } catch (err) {
       console.error('Failed to create event:', err);
+      alert(`Error: ${err.message}`);
     }
   };
 
-  if (loading) return <div className="dashboard">Loading events...</div>;
-  if (error) return <div className="dashboard error">Error: {error}</div>;
+  const handleSelectEvent = (eventId) => {
+    setSelectedEventId(eventId);
+  };
 
+  const handleBackFromDetails = () => {
+    setSelectedEventId(null);
+  };
+
+  if (loading) {
+    return <div className="dashboard loading">Loading events...</div>;
+  }
+
+  // Show event details if one is selected
   if (selectedEventId) {
     return (
-      <EventDetails 
-        eventId={selectedEventId}
-        onBack={() => setSelectedEventId(null)}
-      />
+      <EventDetails eventId={selectedEventId} onBack={handleBackFromDetails} />
     );
   }
 
-    return (
-<div className="dashboard">
-  <header className="dashboard-header">
-    <h1>Labor Coordinator Dashboard</h1>
-    <div className="view-tabs">
-      <button 
-        className={`tab ${viewMode === 'events' ? 'active' : ''}`}
-        onClick={() => setViewMode('events')}
-      >
-        Events
-      </button>
-      <button 
-        className={`tab ${viewMode === 'gantt' ? 'active' : ''}`}
-        onClick={() => setViewMode('gantt')}
-      >
-      Gantt Timeline
-      </button>
+  return (
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <h1>Labor Coordination Dashboard</h1>
+        <button
+          className="btn-primary"
+          onClick={() => setShowForm(!showForm)}
+        >
+          {showForm ? 'Cancel' : '+ New Event'}
+        </button>
+      </header>
 
-      <button 
-        className={`tab ${viewMode === 'schedule' ? 'active' : ''}`}
-        onClick={() => setViewMode('schedule')}
-      >
-        Tech Schedule
-      </button>
-    </div>
-    {viewMode === 'events' && (
-      <button
-        className="btn btn-primary"
-        onClick={() => setShowForm(!showForm)}
-      >
-        {showForm ? 'Cancel' : '+ New Event'}
-      </button>
-    )}
-  </header>
+      {error && <div className="error-banner">Error: {error}</div>}
 
-  {viewMode === 'events' ? (
-    // Events view
-    <>
+      {/* Create Event Form */}
       {showForm && (
         <form className="event-form" onSubmit={handleSubmit}>
           <h2>Create New Event</h2>
+
           <div className="form-group">
-            <label>Event Name *</label>
+            <label htmlFor="name">Event Name *</label>
             <input
+              id="name"
               type="text"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
+              placeholder="e.g., Concert 2025"
               required
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Client Name *</label>
+              <label htmlFor="clientname">Client Name</label>
               <input
+                id="clientname"
                 type="text"
-                name="client_name"
-                value={formData.client_name}
+                name="clientname"
+                value={formData.clientname}
                 onChange={handleInputChange}
-                required
+                placeholder="Client name"
               />
             </div>
+
             <div className="form-group">
-              <label>Contact Person</label>
+              <label htmlFor="clientcontact">Contact Person</label>
               <input
+                id="clientcontact"
                 type="text"
-                name="client_contact"
-                value={formData.client_contact}
+                name="clientcontact"
+                value={formData.clientcontact}
                 onChange={handleInputChange}
+                placeholder="Contact name"
               />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Phone</label>
+              <label htmlFor="clientphone">Phone</label>
               <input
+                id="clientphone"
                 type="tel"
-                name="client_phone"
-                value={formData.client_phone}
+                name="clientphone"
+                value={formData.clientphone}
                 onChange={handleInputChange}
+                placeholder="(555) 123-4567"
               />
             </div>
+
             <div className="form-group">
-              <label>Email</label>
+              <label htmlFor="clientemail">Email</label>
               <input
+                id="clientemail"
                 type="email"
-                name="client_email"
-                value={formData.client_email}
+                name="clientemail"
+                value={formData.clientemail}
                 onChange={handleInputChange}
+                placeholder="client@example.com"
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label>Address</label>
+            <label htmlFor="clientaddress">Address</label>
             <input
+              id="clientaddress"
               type="text"
-              name="client_address"
-              value={formData.client_address}
+              name="clientaddress"
+              value={formData.clientaddress}
               onChange={handleInputChange}
+              placeholder="Event venue address"
             />
           </div>
 
           <div className="form-group">
-            <label>PO Number</label>
+            <label htmlFor="ponumber">PO Number</label>
             <input
+              id="ponumber"
               type="text"
-              name="po_number"
-              value={formData.po_number}
+              name="ponumber"
+              value={formData.ponumber}
               onChange={handleInputChange}
+              placeholder="Purchase order number"
             />
           </div>
 
-          <button type="submit" className="btn btn-success">
-            Create Event
-          </button>
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">
+              Create Event
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setShowForm(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      )
-      }
-    
-      <div className="events-list">
+      )}
+
+      {/* Events List */}
+      <section className="events-section">
         <h2>Events ({events.length})</h2>
+
         {events.length === 0 ? (
-          <p className="empty-state">No events yet. Create one to get started!</p>
+          <div className="empty-state">
+            <p>📅 No events yet. Create one to get started!</p>
+          </div>
         ) : (
-          <div className="cards">
+          <div className="events-grid">
             {events.map((event) => (
               <div key={event.id} className="event-card">
-                <h3>{event.name}</h3>
-                <p><strong>Client:</strong> {event.client_name}</p>
-                <p><strong>Contact:</strong> {event.client_contact}</p>
-                <p><strong>Phone:</strong> {event.client_phone}</p>
-                <p><strong>Email:</strong> {event.client_email}</p>
-                <p><strong>Address:</strong> {event.client_address}</p>
-                <p><strong>PO #:</strong> {event.po_number}</p>
-                <p className="date">
-                  Created: {new Date(event.created_at).toLocaleDateString()}
-                </p>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setSelectedEventId(event.id)}
-                >
-                  View Details
-                </button>
+                <div className="event-card-header">
+                  <h3>{event.name}</h3>
+                  <button
+                    className="btn-view"
+                    onClick={() => handleSelectEvent(event.id)}
+                  >
+                    View Details →
+                  </button>
+                </div>
+
+                <div className="event-card-body">
+                  {event.clientname && (
+                    <div className="event-field">
+                      <strong>Client:</strong> {event.clientname}
+                    </div>
+                  )}
+
+                  {event.clientcontact && (
+                    <div className="event-field">
+                      <strong>Contact:</strong> {event.clientcontact}
+                    </div>
+                  )}
+
+                  {event.clientphone && (
+                    <div className="event-field">
+                      <strong>Phone:</strong>{' '}
+                      <a href={`tel:${event.clientphone}`}>{event.clientphone}</a>
+                    </div>
+                  )}
+
+                  {event.clientemail && (
+                    <div className="event-field">
+                      <strong>Email:</strong>{' '}
+                      <a href={`mailto:${event.clientemail}`}>{event.clientemail}</a>
+                    </div>
+                  )}
+
+                  {event.clientaddress && (
+                    <div className="event-field">
+                      <strong>Address:</strong> {event.clientaddress}
+                    </div>
+                  )}
+
+                  {event.ponumber && (
+                    <div className="event-field">
+                      <strong>PO #:</strong> {event.ponumber}
+                    </div>
+                  )}
+
+                  {event.startdate && (
+                    <div className="event-field">
+                      <strong>Start:</strong> {event.startdate}
+                    </div>
+                  )}
+
+                  {event.enddate && (
+                    <div className="event-field">
+                      <strong>End:</strong> {event.enddate}
+                    </div>
+                  )}
+
+                  <div className="event-field meta">
+                    <small>
+                      Created: {new Date(event.createdat).toLocaleDateString()}
+                    </small>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </>
-) : viewMode === 'schedule' ? (
-  <TechSchedule onBack={() => setViewMode('events')} />
-) : (
-  <GanttTimeline />
-)}
-
-
-  {selectedEventId && (
-    <EventDetails 
-      eventId={selectedEventId}
-      onBack={() => setSelectedEventId(null)}
-    />
-  )}
-</div>
+      </section>
+    </div>
   );
 };
 

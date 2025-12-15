@@ -738,298 +738,347 @@ select.form-control {
 }
 
 /* END PERPLEXITY DESIGN SYSTEM */
-/* ========================================== 
-   TABLE FORMATTING & MOBILE RESPONSIVE FIXES
-   ========================================== */
+/* frontend/src/styles/table-dark-mode.css */
+/* Table theme styles */
 
-/* Improved Table Container */
-.table-container {
-  padding-top: var(--space-20);
-  background: var(--color-surface);
-  border-radius: var(--radius-base);
-  box-shadow: var(--shadow-md);
-  overflow-x: auto;
-  border: 1px solid var(--color-card-border);
-  margin-bottom: var(--space-24);
-}
-
-/* Table Base Styles */
-.assignments-table {
+.table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: auto;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
-/* Table Header */
-.assignments-table thead {
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  background-color: var(--color-surface);
+}
+
+.table thead {
   background-color: var(--color-secondary);
-  border-bottom: 2px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.assignments-table thead th {
+.table th {
   padding: var(--space-12) var(--space-16);
   text-align: left;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-sm);
   color: var(--color-text);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-tight);
   white-space: nowrap;
 }
 
-/* Table Body Rows */
-.assignments-table tbody tr {
+.table td {
+  padding: var(--space-12) var(--space-16);
   border-bottom: 1px solid var(--color-card-border-inner);
-  transition: background-color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
 }
 
-.assignments-table tbody tr:hover {
-  background-color: var(--color-secondary);
-}
-
-.assignments-table tbody tr:last-child {
+.table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Table Body Cells */
-.assignments-table tbody td {
-  padding: var(--space-12) var(--space-16);
-  font-size: var(--font-size-base);
-  color: var(--color-text-secondary);
-  vertical-align: middle;
+.table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-/* Checkbox Column */
-.assignments-table tbody td input[type="checkbox"],
-.assignments-table thead th input[type="checkbox"] {
+.table tbody tr:hover {
+  background-color: var(--color-secondary);
+}
+
+.table tbody tr:focus-within {
+  outline: var(--focus-outline);
+  outline-offset: -2px;
+}
+
+/* Striped table variant */
+.table--striped tbody tr:nth-child(even) {
+  background-color: var(--color-secondary);
+}
+
+.table--striped tbody tr:nth-child(odd):hover,
+.table--striped tbody tr:nth-child(even):hover {
+  background-color: var(--color-secondary-hover);
+}
+
+/* Bordered table variant */
+.table--bordered {
+  border: 1px solid var(--color-border);
+}
+
+.table--bordered th,
+.table--bordered td {
+  border: 1px solid var(--color-card-border-inner);
+}
+
+/* Compact table variant */
+.table--compact th,
+.table--compact td {
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-sm);
+}
+
+/* Table cell alignment */
+.table th.text-right,
+.table td.text-right {
+  text-align: right;
+}
+
+.table th.text-center,
+.table td.text-center {
+  text-align: center;
+}
+
+/* Table actions cell */
+.table-actions {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Table status cells */
+.table .status {
+  font-size: var(--font-size-xs);
+  padding: var(--space-4) var(--space-8);
+}
+
+/* Sortable table headers */
+.table th.sortable {
   cursor: pointer;
-  width: var(--space-20);
-  height: var(--space-20);
-  margin: 0;
-  accent-color: var(--color-primary);
+  user-select: none;
+  position: relative;
+  padding-right: var(--space-32);
 }
 
-/* Action Buttons in Table */
-.assignments-table .btn-delete {
-  margin: 0;
-  white-space: nowrap;
+.table th.sortable:hover {
+  background-color: var(--color-secondary-hover);
 }
 
-/* ========================================== 
-   MOBILE RESPONSIVE TABLE FIXES
-   ========================================== */
+.table th.sortable::after {
+  content: '';
+  position: absolute;
+  right: var(--space-12);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cpolyline points='19 12 12 19 5 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
 
-@media (max-width: 768px) {
-  .table-container {
-    padding-top: 0;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    margin-bottom: var(--space-16);
+.table th.sortable:hover::after {
+  opacity: 0.6;
+}
+
+.table th.sortable.sorted-asc::after {
+  opacity: 1;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.table th.sortable.sorted-desc::after {
+  opacity: 1;
+}
+
+/* Dark mode sortable icon */
+@media (prefers-color-scheme: dark) {
+  .table th.sortable::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cpolyline points='19 12 12 19 5 12'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+}
+
+[data-color-scheme="dark"] .table th.sortable::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cpolyline points='19 12 12 19 5 12'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Empty state */
+.table-empty {
+  padding: var(--space-32) var(--space-16);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.table-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-16);
+  opacity: 0.4;
+}
+
+/* Loading state */
+.table-loading {
+  position: relative;
+  min-height: 200px;
+}
+
+.table-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(var(--color-slate-900-rgb), 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .table-loading::after {
+    background-color: rgba(var(--color-gray-400-rgb), 0.1);
+  }
+}
+
+[data-color-scheme="dark"] .table-loading::after {
+  background-color: rgba(var(--color-gray-400-rgb), 0.1);
+}
+
+/* Table footer */
+.table-footer {
+  padding: var(--space-16);
+  border-top: 1px solid var(--color-card-border);
+  background-color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.table-pagination {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.table-pagination button {
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.table-pagination button:hover:not(:disabled) {
+  background: var(--color-secondary);
+}
+
+.table-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.table-pagination button:focus-visible {
+  outline: var(--focus-outline);
+  box-shadow: var(--focus-ring);
+}
+
+/* Responsive table - mobile portrait breakpoint at 480px */
+@media (max-width: 480px) {
+  .table-wrapper {
+    border-radius: var(--radius-base);
   }
 
-  /* Hide table header on mobile */
-  .assignments-table thead {
+  .table {
+    font-size: var(--font-size-sm);
+  }
+
+  .table thead {
     display: none;
-    position: static;
   }
 
-  /* Convert table to card layout */
-  .assignments-table tbody,
-  .assignments-table tr {
+  .table tbody,
+  .table tr,
+  .table td {
     display: block;
-    width: 100%;
   }
 
-  .assignments-table tbody tr {
+  .table tr {
     margin-bottom: var(--space-16);
     border: 1px solid var(--color-card-border);
     border-radius: var(--radius-base);
     overflow: hidden;
-    background: var(--color-surface);
-    box-shadow: var(--shadow-xs);
   }
 
-  .assignments-table tbody tr:last-child {
-    margin-bottom: 0;
-  }
-
-  .assignments-table tbody tr:hover {
-    background-color: var(--color-surface);
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* Convert cells to full-width blocks */
-  .assignments-table tbody td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-12) var(--space-16);
-    border-top: 1px solid var(--color-card-border-inner);
+  .table td {
+    padding: var(--space-12);
+    position: relative;
+    padding-left: 40%;
     text-align: right;
-    min-height: var(--space-32);
+    border-bottom: 1px solid var(--color-card-border-inner);
   }
 
-  .assignments-table tbody td:first-child {
-    border-top: none;
-    padding-left: var(--space-12);
+  .table td:last-child {
+    border-bottom: none;
   }
 
-  /* Add label with data attribute */
-  .assignments-table tbody td::before {
+  .table td::before {
     content: attr(data-label);
-    float: left;
+    position: absolute;
+    left: var(--space-12);
+    width: calc(40% - var(--space-24));
     font-weight: var(--font-weight-semibold);
+    text-align: left;
     color: var(--color-text);
-    text-transform: uppercase;
-    font-size: var(--font-size-xs);
-    letter-spacing: 0.05em;
-    margin-right: auto;
   }
 
-  /* Checkbox on mobile */
-  .assignments-table tbody td input[type="checkbox"] {
-    margin-left: auto;
-    margin-right: 0;
+  .table-actions {
+    justify-content: flex-start;
+    padding-left: 40%;
   }
 
-  /* Last cell - action buttons */
-  .assignments-table tbody td:last-child {
-    border-top: 1px solid var(--color-card-border-inner);
-    padding-top: var(--space-16);
-    justify-content: flex-end;
-    gap: var(--space-8);
-  }
-
-  .assignments-table tbody td:last-child::before {
-    display: none;
-  }
-
-  /* Input fields in mobile view */
-  .assignments-table input,
-  .assignments-table select {
-    max-width: 50%;
-    text-align: right;
-  }
-}
-
-/* Mobile Portrait - 480px Breakpoint */
-@media (max-width: 480px) {
-  .table-container {
-    margin-bottom: var(--space-12);
-    padding: 0;
-  }
-
-  .assignments-table tbody tr {
-    margin-bottom: var(--space-12);
-    border-radius: var(--radius-sm);
-  }
-
-  .assignments-table tbody td {
-    padding: var(--space-10) var(--space-12);
-    font-size: var(--font-size-sm);
-    min-height: var(--space-32);
-    flex-wrap: wrap;
-  }
-
-  .assignments-table tbody td::before {
-    font-size: var(--font-size-xs);
-    letter-spacing: 0.05em;
-  }
-
-  /* Stack buttons vertically on very small screens */
-  .assignments-table tbody td:last-child {
+  .table-footer {
     flex-direction: column;
-    gap: var(--space-8);
-    padding-top: var(--space-12);
-    padding-bottom: var(--space-12);
+    gap: var(--space-12);
+    align-items: stretch;
   }
 
-  .assignments-table .btn-delete {
-    width: 100%;
-    text-align: center;
+  .table-pagination {
     justify-content: center;
   }
 
-  /* Improved input/select sizing for small screens */
-  .assignments-table input,
-  .assignments-table select {
-    max-width: 60%;
+  /* Compact variant adjustments */
+  .table--compact td {
+    padding: var(--space-8);
+    padding-left: 40%;
+  }
+
+  .table--compact td::before {
+    left: var(--space-8);
+    width: calc(40% - var(--space-16));
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 768px) and (min-width: 481px) {
+  .table {
     font-size: var(--font-size-sm);
   }
 
-  /* Checkbox sizing for mobile */
-  .assignments-table tbody td input[type="checkbox"] {
-    width: var(--space-20);
-    height: var(--space-20);
-  }
-}
-
-/* ========================================== 
-   EMPTY STATE STYLING
-   ========================================== */
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-32) var(--space-20);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-normal);
-  background: var(--color-surface);
-  border-radius: var(--radius-base);
-  border: 1px solid var(--color-card-border);
-  line-height: var(--line-height-normal);
-}
-
-@media (max-width: 480px) {
-  .empty-state {
-    padding: var(--space-24) var(--space-16);
-    font-size: var(--font-size-sm);
-    border-radius: var(--radius-sm);
-  }
-}
-
-/* ========================================== 
-   DARK MODE ADJUSTMENTS FOR TABLES
-   ========================================== */
-
-@media (prefers-color-scheme: dark) {
-  .assignments-table thead {
-    background-color: rgba(var(--color-gray-400-rgb), 0.15);
-    border-bottom-color: rgba(var(--color-gray-400-rgb), 0.3);
+  .table th,
+  .table td {
+    padding: var(--space-10) var(--space-12);
   }
 
-  .assignments-table tbody tr:hover {
-    background-color: rgba(var(--color-teal-300-rgb), 0.08);
+  .table-footer {
+    flex-direction: column;
+    gap: var(--space-12);
   }
-
-  .table-container {
-    box-shadow: var(--shadow-lg);
-  }
-}
-
-[data-color-scheme="dark"] .assignments-table thead {
-  background-color: rgba(119, 124, 124, 0.15);
-  border-bottom-color: rgba(119, 124, 124, 0.3);
-}
-
-[data-color-scheme="dark"] .assignments-table tbody tr:hover {
-  background-color: rgba(50, 184, 198, 0.08);
-}
-
-[data-color-scheme="dark"] .table-container {
-  box-shadow: var(--shadow-lg);
-}
-
-[data-color-scheme="light"] .assignments-table thead {
-  background-color: var(--color-secondary);
-  border-bottom-color: var(--color-border);
-}
-
-[data-color-scheme="light"] .assignments-table tbody tr:hover {
-  background-color: var(--color-secondary);
 }

@@ -1,7 +1,24 @@
 // frontend/src/hooks/useTechnicians.js
-import { useState, useEffect } from 'react';
-import { getTechnicians, createTechnician, updateTechnician, deleteTechnician } from '../utils/api';
+// Hook for managing technicians
 
+import { useState, useEffect } from 'react';
+import {
+  getTechnicians,
+  createTechnician,
+  updateTechnician,
+  deleteTechnician,
+} from '../utils/api';
+
+/**
+ * Hook for managing technicians
+ *
+ * Features:
+ * - Fetch all technicians
+ * - Add new technician
+ * - Update technician
+ * - Delete technician
+ * - Refresh technicians from server
+ */
 export const useTechnicians = () => {
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,10 +27,12 @@ export const useTechnicians = () => {
   const fetchTechnicians = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getTechnicians();
-      setTechnicians(response.data);
+      setTechnicians(Array.isArray(response) ? response : response.data || []);
     } catch (err) {
       setError(err.message);
+      console.error('Error fetching technicians:', err);
     } finally {
       setLoading(false);
     }
@@ -26,8 +45,9 @@ export const useTechnicians = () => {
   const addTechnician = async (techData) => {
     try {
       const response = await createTechnician(techData);
-      setTechnicians([...technicians, response.data]);
-      return response.data;
+      const newTech = Array.isArray(response) ? response[0] : response.data || response;
+      setTechnicians([...technicians, newTech]);
+      return newTech;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -37,8 +57,9 @@ export const useTechnicians = () => {
   const updateTech = async (id, techData) => {
     try {
       const response = await updateTechnician(id, techData);
-      setTechnicians(technicians.map(t => t.id === id ? response.data : t));
-      return response.data;
+      const updated = Array.isArray(response) ? response[0] : response.data || response;
+      setTechnicians(technicians.map((t) => (t.id === id ? updated : t)));
+      return updated;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -48,12 +69,20 @@ export const useTechnicians = () => {
   const deleteTech = async (id) => {
     try {
       await deleteTechnician(id);
-      setTechnicians(technicians.filter(t => t.id !== id));
+      setTechnicians(technicians.filter((t) => t.id !== id));
     } catch (err) {
       setError(err.message);
       throw err;
     }
   };
 
-  return { technicians, loading, error, addTechnician, updateTech, deleteTech, refetch: fetchTechnicians };
+  return {
+    technicians,
+    loading,
+    error,
+    addTechnician,
+    updateTech,
+    deleteTech,
+    refetch: fetchTechnicians,
+  };
 };

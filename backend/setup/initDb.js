@@ -1,3 +1,7 @@
+// backend/setup/initDb.js
+// Database initialization - creates tables and exports db instance
+// Called once by server.js at startup
+
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -10,7 +14,7 @@ const DBPATH = path.join(dataDir, 'labor.db');
 
 export let db;
 
-export function initializeDatabase() {
+export async function initializeDatabase() {
   try {
     // Ensure data directory exists
     if (!fs.existsSync(dataDir)) {
@@ -18,13 +22,13 @@ export function initializeDatabase() {
       console.log(`📁 Created data directory: ${dataDir}`);
     }
 
-    console.log(`📦 Initializing database at: ${DBPATH}`);
-    
+    console.log(`📦 Opening database: ${DBPATH}`);
+
     db = new Database(DBPATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
 
-    // Array of individual CREATE TABLE statements
+    // Create all tables
     const statements = [
       // Events table
       `CREATE TABLE IF NOT EXISTS events (
@@ -44,7 +48,7 @@ export function initializeDatabase() {
         createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
-      
+
       // Event requirements table
       `CREATE TABLE IF NOT EXISTS eventrequirements (
         id TEXT PRIMARY KEY,
@@ -62,7 +66,7 @@ export function initializeDatabase() {
         updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
       )`,
-      
+
       // Technicians table
       `CREATE TABLE IF NOT EXISTS technicians (
         id TEXT PRIMARY KEY,
@@ -74,7 +78,7 @@ export function initializeDatabase() {
         createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
-      
+
       // Event assignments table
       `CREATE TABLE IF NOT EXISTS eventassignments (
         id TEXT PRIMARY KEY,
@@ -106,7 +110,7 @@ export function initializeDatabase() {
         FOREIGN KEY (technicianid) REFERENCES technicians(id) ON DELETE CASCADE,
         FOREIGN KEY (requirementid) REFERENCES eventrequirements(id) ON DELETE SET NULL
       )`,
-      
+
       // Settings table
       `CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -119,7 +123,7 @@ export function initializeDatabase() {
         customerbaserate REAL DEFAULT 75,
         updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
-      
+
       // Event settings table
       `CREATE TABLE IF NOT EXISTS eventsettings (
         id TEXT PRIMARY KEY,
@@ -139,63 +143,39 @@ export function initializeDatabase() {
         updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
       )`,
-      
-      // Indexes for performance
+
+      // Indexes
       `CREATE INDEX IF NOT EXISTS idx_events_created ON events(createdat)`,
       `CREATE INDEX IF NOT EXISTS idx_requirements_event ON eventrequirements(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_event ON eventassignments(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_tech ON eventassignments(technicianid)`,
-      `CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON eventassignments(requirementid)`
+      `CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON eventassignments(requirementid)`,
     ];
 
-    // Execute each statement using db.prepare().run() - THE CORRECT WAY
     let successCount = 0;
     for (const stmt of statements) {
       try {
         const trimmed = stmt.trim();
         if (trimmed) {
-          // Use prepare().run() instead of exec() - this is the correct better-sqlite3 API
           const prepared = db.prepare(trimmed);
           prepared.run();
           successCount++;
         }
       } catch (error) {
         console.error(`❌ Error executing statement: ${error.message}`);
-        // Log which statement failed
-        console.error(`Failed statement: ${stmt.substring(0, 50)}...`);
         throw error;
       }
     }
 
-    console.log(`✅ Database initialized successfully`);
     console.log(`✅ All ${successCount} statements executed`);
-    console.log(`✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings, indexes`);
-    
+    console.log(
+      `✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings`,
+    );
+
     return db;
   } catch (error) {
     console.error(`❌ Database initialization error: ${error.message}`);
-    console.error('Error details:', error);
-    throw error;
-  }
-}
-
-export function query(sql, params = []) {
-  try {
-    const stmt = db.prepare(sql);
-    return stmt.all(...params);
-  } catch (error) {
-    console.error('❌ Query error:', error);
-    throw error;
-  }
-}
-
-export function run(sql, params = []) {
-  try {
-    const stmt = db.prepare(sql);
-    return stmt.run(...params);
-  } catch (error) {
-    console.error('❌ Run error:', error);
-    throw error;
+    process.exit(1);
   }
 }
 

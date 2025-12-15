@@ -1,35 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+// frontend/src/components/EditableSelectCell.js
+import React, { useState } from 'react';
 
-/**
- * EditableSelectCell - A table cell with select dropdown on double-click
- * FIXED: Properly handles selection changes without affecting other cells
- */
-const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
+const EditableSelectCell = ({ value, options, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
-  const selectRef = useRef(null);
-
-  // Update local state when prop changes
-  useEffect(() => {
-    setEditValue(value);
-  }, [value]);
-
-  // Focus when entering edit mode
-  useEffect(() => {
-    if (isEditing && selectRef.current) {
-      selectRef.current.focus();
-    }
-  }, [isEditing]);
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-  };
 
   const handleSave = () => {
-    // Only call onSave if value actually changed
-    if (editValue !== value) {
-      onSave(editValue);
-    }
+    onSave(editValue);
     setIsEditing(false);
   };
 
@@ -38,54 +15,45 @@ const EditableSelectCell = ({ value, options, onSave, displayValue }) => {
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
-
   if (isEditing) {
     return (
-      <select
-        ref={selectRef}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
-        style={{
-          width: '100%',
-          padding: '6px',
-          border: '2px solid #1a73e8',
-          borderRadius: '4px',
-          fontSize: '14px',
-          fontFamily: 'inherit',
-          boxSizing: 'border-box'
-        }}
-      >
-        {options.map(opt => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
+      <td style={{ padding: '0.5rem' }}>
+        <select
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            borderRadius: '4px',
+            border: '1px solid var(--color-border)',
+            backgroundColor: 'var(--color-background)',
+            color: 'var(--color-text)',
+          }}
+          onBlur={handleSave}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave();
+            if (e.key === 'Escape') handleCancel();
+          }}
+          autoFocus
+        >
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </td>
     );
   }
 
   return (
-    <span
-      onDoubleClick={handleDoubleClick}
-      style={{
-        cursor: 'pointer',
-        userSelect: 'none',
-        display: 'block',
-        padding: '4px'
-      }}
-      title="Double-click to edit"
+    <td
+      onClick={() => setIsEditing(true)}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+      title="Click to edit"
     >
-      {displayValue || '—'}
-    </span>
+      {value || '—'}
+    </td>
   );
 };
 

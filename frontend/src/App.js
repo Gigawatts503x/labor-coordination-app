@@ -1,89 +1,45 @@
 // frontend/src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Dashboard from './pages/Dashboard';
-import Technicians from './pages/Technicians';
 import EventDetails from './pages/EventDetails';
-import ScheduleGrid from './pages/ScheduleGrid';
-import { initializeDarkMode } from './utils/darkMode';
-import ScheduleGridAdvanced from './pages/ScheduleGridAdvanced';
+import Technicians from './pages/Technicians';
 import './styles/App.css';
 
-function App() {
-  const [page, setPage] = useState('dashboard');
-  const [selectedEventId, setSelectedEventId] = useState(null);
-
-  useEffect(() => {
-    initializeDarkMode();
-  }, []);
-
-  const handleNavigateToEvent = (eventId) => {
-    setSelectedEventId(eventId);
-    setPage('event-details');
-  };
-
-  const handleNavigateToSchedule = (eventId) => {
-    setSelectedEventId(eventId);
-    setPage('schedule-grid');
-  };
-
-  const handleNavigateToAdvancedSchedule = (eventId) => {
-    setSelectedEventId(eventId);
-    setPage('schedule-advanced');
-  };
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'technicians'
 
   return (
     <div className="app">
-      <header className="app-header">
-        <button
-          className="nav-button"
-          onClick={() => setPage('dashboard')}
-          style={{
-            fontWeight: page === 'dashboard' ? 'bold' : 'normal',
-          }}
-        >
-          📊 Dashboard
-        </button>
-        <button
-          className="nav-button"
-          onClick={() => setPage('technicians')}
-          style={{
-            fontWeight: page === 'technicians' ? 'bold' : 'normal',
-          }}
-        >
-          👥 Technicians
-        </button>
-      </header>
+      <nav className="app-nav">
+        <div className="nav-brand">
+          <h1>Labor Coordination</h1>
+        </div>
+        <ul className="nav-links">
+          <li>
+            <button
+              className={currentPage === 'dashboard' ? 'active' : ''}
+              onClick={() => setCurrentPage('dashboard')}
+            >
+              📅 Events
+            </button>
+          </li>
+          <li>
+            <button
+              className={currentPage === 'technicians' ? 'active' : ''}
+              onClick={() => setCurrentPage('technicians')}
+            >
+              👤 Technicians
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-      <main className="app-content">
-        {page === 'dashboard' && (
-          <Dashboard
-            onSelectEvent={handleNavigateToEvent}
-            onSelectSchedule={handleNavigateToSchedule}
-            onSelectAdvancedSchedule={handleNavigateToAdvancedSchedule}
-          />
-        )}
-        {page === 'technicians' && <Technicians />}
-        {page === 'event-details' && (
-          <EventDetails
-            eventId={selectedEventId}
-            onBack={() => setPage('dashboard')}
-          />
-        )}
-        {page === 'schedule-grid' && (
-          <ScheduleGrid
-            eventId={selectedEventId}
-            onBack={() => setPage('dashboard')}
-          />
-        )}
-        {page === 'schedule-advanced' && (
-          <ScheduleGridAdvanced
-            eventId={selectedEventId}
-            onBack={() => setPage('dashboard')}
-          />
-        )}
+      <main className="app-main">
+        {currentPage === 'dashboard' && <Dashboard />}
+        {currentPage === 'technicians' && <Technicians />}
       </main>
     </div>
   );
-}
+};
 
 export default App;

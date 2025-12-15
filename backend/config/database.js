@@ -1,128 +1,58 @@
 // backend/config/database.js
-// Database connection and initialization
-// WHAT THIS DOES:
-// - Connects to PostgreSQL (production) or SQLite (development)
-// - Exports a query function that the rest of the app uses
-// - Runs SQL setup if needed
-
-import pg from 'pg';
-import sqlite3 from 'sqlite3';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const USE_POSTGRES = process.env.DB_TYPE === 'postgres';
-const USE_SQLITE = !USE_POSTGRES;
-
-let db = null;
-
-// ============================================
-// PostgreSQL Configuration (for Synology NAS)
-// ============================================
-if (USE_POSTGRES) {
-  const { Client } = pg;
-  
-  db = new Client({
-    user: process.env.DB_USER || 'labor_admin',
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'labor_coordinator',
-  });
-
-  db.connect((err) => {
-    if (err) {
-      console.error('❌ Database connection error:', err);
-      process.exit(1);
-    }
-    console.log('✅ Connected to PostgreSQL');
-  });
-}
-
-// ============================================
-// SQLite Configuration (for local development)
-// ============================================
-if (USE_SQLITE) {
-  // SQLite is simpler - just opens a file
-  db = new sqlite3.Database('./data/labor.db', (err) => {
-    if (err) {
-      console.error('❌ SQLite error:', err);
-    } else {
-      console.log('✅ Connected to SQLite (local dev mode)');
-    }
-  });
-  
-  // Enable foreign keys for SQLite
-  db.run('PRAGMA foreign_keys = ON');
-}
+// Simple wrapper around the better-sqlite3 instance from initDb.js
+// All queries go through here
 
 /**
- * Execute a SQL query
- * USAGE: const result = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+ * Execute a SQL query - returns array of rows
  */
 export async function query(sql, params = []) {
-  if (USE_POSTGRES) {
-    try {
-      const result = await db.query(sql, params);
-      return result.rows;
-    } catch (err) {
-      console.error('Query error:', err, 'SQL:', sql);
-      throw err;
+  try {
+    // Import after server has initialized the db
+    const { db } = await import('../setup/initDb.js');
+
+    if (!db) {
+      throw new Error('Database not initialized');
     }
-  }
-  
-  if (USE_SQLITE) {
-    return new Promise((resolve, reject) => {
-      db.all(sql, params, (err, rows) => {
-        if (err) {
-          console.error('Query error:', err);
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+
+    const stmt = db.prepare(sql);
+    return stmt.all(...params);
+  } catch (err) {
+    console.error('Query error:', err.message, '\nSQL:', sql);
+    throw err;
   }
 }
 
 /**
- * Run a single SQL statement (INSERT, UPDATE, DELETE)
- * USAGE: await run('DELETE FROM events WHERE id = $1', [eventId]);
+ * Run a SQL statement (INSERT, UPDATE, DELETE)
  */
 export async function run(sql, params = []) {
-  if (USE_POSTGRES) {
-    try {
-      const result = await db.query(sql, params);
-      return result;
-    } catch (err) {
-      console.error('Run error:', err);
-      throw err;
+  try {
+    const { db } = await import('../setup/initDb.js');
+
+    if (!db) {
+      throw new Error('Database not initialized');
     }
-  }
-  
-  if (USE_SQLITE) {
-    return new Promise((resolve, reject) => {
-      db.run(sql, params, (err) => {
-        if (err) {
-          console.error('Run error:', err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+
+    const stmt = db.prepare(sql);
+    return stmt.run(...params);
+  } catch (err) {
+    console.error('Run error:', err.message, '\nSQL:', sql);
+    throw err;
   }
 }
 
 /**
- * Close database connection cleanly
+ * Close database connection
  */
-export function closeConnection() {
-  if (USE_POSTGRES) {
-    db.end(() => console.log('PostgreSQL connection closed'));
-  }
-  if (USE_SQLITE) {
-    db.close(() => console.log('SQLite connection closed'));
+export async function closeConnection() {
+  try {
+    const { db } = await import('../setup/initDb.js');
+    if (db) {
+      db.close();
+      console.log('✅ SQLite connection closed');
+    }
+  } catch (err) {
+    console.error('Error closing connection:', err);
   }
 }
 
