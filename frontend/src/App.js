@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Dashboard from './pages/Dashboard';
 import EventDetails from './pages/EventDetails';
 import Technicians from './pages/Technicians';
-import ScheduleGridGantt from './pages/ScheduleGrid-Gantt';
+import ScheduleGrid from './pages/ScheduleGrid';
 import Settings from './pages/Settings';
 import './styles/App.css';
 
@@ -82,7 +82,7 @@ function App() {
         )}
         
         {currentPage === 'schedule' && (
-          <ScheduleGridGantt onNavigateToEvent={handleNavigateToEvent} />
+          <ScheduleGrid onNavigateToEvent={handleNavigateToEvent} />
         )}
 
         {currentPage === 'settings' && (
