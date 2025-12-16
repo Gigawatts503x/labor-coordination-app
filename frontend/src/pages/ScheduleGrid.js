@@ -1,4 +1,4 @@
-// frontend/src/pages/ScheduleGrid.js - FINAL FIXED
+// frontend/src/pages/ScheduleGrid.js - WITH FILTERS & SYNC
 import React, { useState, useEffect } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
@@ -18,6 +18,10 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const [draggedPosition, setDraggedPosition] = useState(null);
   const [draggedTech, setDraggedTech] = useState(null);
   const [expandedEvents, setExpandedEvents] = useState({});
+
+  // 🆕 FILTERS
+  const [positionFilter, setPositionFilter] = useState('');
+  const [techFilter, setTechFilter] = useState('');
 
   // Load all data from each event
   useEffect(() => {
@@ -89,12 +93,31 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     return Array.from(positions).sort();
   };
 
+  // 🆕 FILTERED POSITIONS
+  const getFilteredPositions = () => {
+    const positions = getAvailablePositions();
+    if (!positionFilter.trim()) return positions;
+    return positions.filter(p =>
+      p.toLowerCase().includes(positionFilter.toLowerCase())
+    );
+  };
+
   // Get unassigned technicians for drag pool
   const getUnassignedTechs = () => {
     return technicians.filter(t => {
       const assigned = assignments.some(a => a.technician_id === t.id);
       return !assigned;
     });
+  };
+
+  // 🆕 FILTERED TECHS
+  const getFilteredTechs = () => {
+    const unassigned = getUnassignedTechs();
+    if (!techFilter.trim()) return unassigned;
+    return unassigned.filter(t =>
+      t.name.toLowerCase().includes(techFilter.toLowerCase()) ||
+      (t.position && t.position.toLowerCase().includes(techFilter.toLowerCase()))
+    );
   };
 
   // Get assignments for a specific event
@@ -125,12 +148,10 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const handleEventDrop = (e, eventId) => {
     e.preventDefault();
 
-    // If dragging position → create new requirement
     if (draggedPosition) {
       const event = getEvent(eventId);
       if (!event) return;
 
-      // Create temp requirement (will need backend integration)
       const tempReq = {
         id: `temp-${Date.now()}`,
         event_id: eventId,
@@ -170,10 +191,10 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     return <div className="schedule-table loading">📋 Loading schedule...</div>;
   }
 
-  const positions = getAvailablePositions();
-  const unassignedTechs = getUnassignedTechs();
+  const filteredPositions = getFilteredPositions();
+  const filteredTechs = getFilteredTechs();
 
-  console.log('Render - Events:', events.length, 'Requirements:', requirements.length, 'Assignments:', assignments.length, 'Positions:', positions.length);
+  console.log('Render - Events:', events.length, 'Requirements:', requirements.length, 'Assignments:', assignments.length);
 
   return (
     <div className="schedule-table">
@@ -188,12 +209,36 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         <div className="sidebar">
           {/* Positions Section */}
           <div className="sidebar-section">
-            <div className="section-header">📌 Positions ({positions.length})</div>
+            <div className="section-header">📌 Positions ({filteredPositions.length})</div>
+            
+            {/* 🆕 FILTER INPUT */}
+            <div className="filter-input-wrapper">
+              <input
+                type="text"
+                placeholder="Search positions..."
+                value={positionFilter}
+                onChange={(e) => setPositionFilter(e.target.value)}
+                className="filter-input"
+                aria-label="Filter positions"
+              />
+              {positionFilter && (
+                <button
+                  className="filter-clear"
+                  onClick={() => setPositionFilter('')}
+                  title="Clear filter"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <div className="positions-list">
-              {positions.length === 0 ? (
+              {getAvailablePositions().length === 0 ? (
                 <div className="empty-section">No positions available. Create requirements first.</div>
+              ) : filteredPositions.length === 0 ? (
+                <div className="empty-section">No positions match "{positionFilter}"</div>
               ) : (
-                positions.map(position => (
+                filteredPositions.map(position => (
                   <div
                     key={position}
                     draggable
@@ -363,14 +408,38 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         {/* Right Sidebar - Available Techs */}
         <div className="sidebar sidebar-right">
           <div className="sidebar-section">
-            <div className="section-header">👤 Available Techs ({unassignedTechs.length})</div>
+            <div className="section-header">👤 Available Techs ({filteredTechs.length})</div>
+            
+            {/* 🆕 FILTER INPUT */}
+            <div className="filter-input-wrapper">
+              <input
+                type="text"
+                placeholder="Search techs..."
+                value={techFilter}
+                onChange={(e) => setTechFilter(e.target.value)}
+                className="filter-input"
+                aria-label="Filter technicians"
+              />
+              {techFilter && (
+                <button
+                  className="filter-clear"
+                  onClick={() => setTechFilter('')}
+                  title="Clear filter"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <div className="techs-list">
-              {unassignedTechs.length === 0 ? (
+              {getUnassignedTechs().length === 0 ? (
                 <div className="empty-section">
                   {technicians.length === 0 ? 'No technicians added' : 'All techs assigned'}
                 </div>
+              ) : filteredTechs.length === 0 ? (
+                <div className="empty-section">No techs match "{techFilter}"</div>
               ) : (
-                unassignedTechs.map(tech => (
+                filteredTechs.map(tech => (
                   <div
                     key={tech.id}
                     draggable

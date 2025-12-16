@@ -1,7 +1,3 @@
-// frontend/src/utils/api.js
-// API client for communicating with the backend
-// All endpoints match the new backend routes
-
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3001/api';
@@ -17,102 +13,100 @@ const api = axios.create({
 // EVENTS
 // =============================================
 
-export const getEvents = () => api.get('/events').then((res) => res.data);
-
-export const getEvent = (id) => api.get(`/events/${id}`).then((res) => res.data);
-
-export const createEvent = (data) => api.post('/events', data).then((res) => res.data);
-
-export const updateEvent = (id, data) => api.put(`/events/${id}`, data).then((res) => res.data);
-
-export const deleteEvent = (id) => api.delete(`/events/${id}`).then((res) => res.data);
-
-// =============================================
-// TECHNICIANS
-// =============================================
-
-export const getTechnicians = () => api.get('/technicians').then((res) => res.data);
-
-export const getTechnician = (id) => api.get(`/technicians/${id}`).then((res) => res.data);
-
-export const createTechnician = (data) => api.post('/technicians', data).then((res) => res.data);
-
-export const updateTechnician = (id, data) =>
-  api.put(`/technicians/${id}`, data).then((res) => res.data);
-
-export const deleteTechnician = (id) => api.delete(`/technicians/${id}`).then((res) => res.data);
+export const getEvents = () => api.get('/events');
+export const getEvent = (id) => api.get(`/events/${id}`);
+export const createEvent = (data) => api.post('/events', data);
+export const updateEvent = (id, data) => api.put(`/events/${id}`, data);
+export const deleteEvent = (id) => api.delete(`/events/${id}`);
 
 // =============================================
 // REQUIREMENTS
 // =============================================
 
-export const getEventRequirements = (eventId) =>
-  api.get(`/events/${eventId}/requirements`).then((res) => res.data);
+export const getEventRequirements = (eventId) => api.get(`/events/${eventId}/requirements`);
 
-export const getRequirement = (id) => api.get(`/requirements/${id}`).then((res) => res.data);
+export const getEventRequirementsWithCoverage = (eventId) =>
+  api.get(`/events/${eventId}/requirements-with-coverage`);
 
-export const createRequirement = (eventId, data) =>
-  api.post(`/events/${eventId}/requirements`, data).then((res) => res.data);
+export const getRequirement = (id) => api.get(`/requirements/${id}`);
 
-export const updateRequirement = (id, data) =>
-  api.patch(`/requirements/${id}`, data).then((res) => res.data);
+// ✅ FIXED: Accept full data object with event_id inside
+export const createRequirement = (data) => api.post(`/requirements`, data);
 
-export const deleteRequirement = (id) => api.delete(`/requirements/${id}`).then((res) => res.data);
+export const updateRequirement = (id, data) => api.patch(`/requirements/${id}`, data);
+
+export const deleteRequirement = (id) => api.delete(`/requirements/${id}`);
+
+export const getEventLocations = (eventId) => api.get(`/events/${eventId}/locations`);
 
 // =============================================
 // ASSIGNMENTS
 // =============================================
 
-export const getEventAssignments = (eventId) =>
-  api.get(`/events/${eventId}/assignments`).then((res) => res.data);
+export const getEventAssignments = (eventId) => api.get(`/events/${eventId}/assignments`);
 
-export const getAssignment = (id) => api.get(`/assignments/${id}`).then((res) => res.data);
+export const getSlotAssignments = (eventId, date, location) =>
+  api.get(`/events/${eventId}/assignments/slot/${date}/${location}`);
 
-export const createAssignment = (eventId, data) =>
-  api.post(`/events/${eventId}/assignments`, data).then((res) => res.data);
+export const getAssignment = (id) => api.get(`/assignments/${id}`);
 
-export const updateAssignment = (id, data) =>
-  api.patch(`/assignments/${id}`, data).then((res) => res.data);
+export const createAssignment = (data) => api.post('/assignments', data);
 
-export const deleteAssignment = (id) => api.delete(`/assignments/${id}`).then((res) => res.data);
+export const updateAssignment = (id, data) => api.patch(`/assignments/${id}`, data);
+
+export const deleteAssignment = (id) => api.delete(`/assignments/${id}`);
+
+export const getTechAvailability = (eventId, date, startTime, endTime) =>
+  api.get(`/events/${eventId}/tech-availability/${date}/${startTime}/${endTime}`);
+
+export const bulkCreateAssignments = (assignments) => api.post('/assignments/bulk', assignments);
+
+// =============================================
+// TECHNICIANS
+// =============================================
+
+export const getTechnicians = () => api.get('/technicians');
+
+export const getTechnician = (id) => api.get(`/technicians/${id}`);
+
+export const createTechnician = (data) => api.post('/technicians', data);
+
+export const updateTechnician = (id, data) => api.put(`/technicians/${id}`, data);
+
+export const deleteTechnician = (id) => api.delete(`/technicians/${id}`);
 
 // =============================================
 // SETTINGS
 // =============================================
 
-export const getSettings = () => api.get('/settings').then((res) => res.data);
+export const getSettings = () => api.get('/settings');
 
-export const updateSettings = (data) => api.put('/settings', data).then((res) => res.data);
+export const updateSettings = (data) => api.put('/settings', data);
 
-// =============================================
-// POSITIONS
-// =============================================
+export const getEventSettings = (eventId) => api.get(`/events/${eventId}/settings`);
 
-export const getPositions = () => api.get('/positions').then((res) => res.data);
+export const updateEventSettings = (eventId, data) => api.patch(`/events/${eventId}/settings`, data);
 
 // =============================================
-// COMPOSITE DATA FETCHING (for schedule/dashboard)
+// SCHEDULE (GRID) SPECIFIC
 // =============================================
 
 export const getScheduleData = async (eventId) => {
   try {
-    const [event, requirements, assignments, technicians, settings, positions] =
-      await Promise.all([
-        getEvent(eventId),
-        getEventRequirements(eventId),
-        getEventAssignments(eventId),
-        getTechnicians(),
-        getSettings(),
-        getPositions(),
-      ]);
+    const [events, requirements, assignments, technicians, settings] = await Promise.all([
+      getEvent(eventId),
+      getEventRequirements(eventId),
+      getEventAssignments(eventId),
+      getTechnicians(),
+      getSettings()
+    ]);
 
     return {
-      event,
-      requirements,
-      assignments,
-      technicians,
-      settings,
-      positions,
+      event: events.data,
+      requirements: requirements.data,
+      assignments: assignments.data,
+      technicians: technicians.data,
+      settings: settings.data
     };
   } catch (error) {
     console.error('Error loading schedule data:', error);
@@ -121,21 +115,15 @@ export const getScheduleData = async (eventId) => {
 };
 
 // =============================================
-// ERROR HANDLING & INTERCEPTORS
+// ERROR HANDLING
 // =============================================
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const errorMessage = error.response?.data?.error || error.message || 'API error occurred';
-    console.error('API Error:', errorMessage);
-
-    // Re-throw with the error message
-    const apiError = new Error(errorMessage);
-    apiError.status = error.response?.status;
-    apiError.data = error.response?.data;
-    throw apiError;
-  },
+    console.error('API Error:', error.response?.data || error.message);
+    throw error;
+  }
 );
 
 export default api;

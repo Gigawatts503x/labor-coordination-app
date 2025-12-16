@@ -738,7 +738,13 @@ select.form-control {
 }
 
 /* END PERPLEXITY DESIGN SYSTEM */
-/* frontend/src/styles/ScheduleGrid.css - RIGHT SIDEBAR VERSION */
+/* frontend/src/styles/ScheduleGrid.css - WITH FILTERS & COMPACT TECHS */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 .schedule-table {
   display: flex;
@@ -765,7 +771,6 @@ select.form-control {
   background-color: var(--color-surface);
   border-bottom: 2px solid var(--color-border);
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
 }
 
 .schedule-header h1 {
@@ -773,7 +778,6 @@ select.form-control {
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-semibold);
   letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
 }
 
 /* ==================== MAIN CONTENT ==================== */
@@ -825,8 +829,60 @@ select.form-control {
   border-bottom: 1px solid var(--color-border);
   color: var(--color-primary);
   flex-shrink: 0;
-  letter-spacing: var(--letter-spacing-tight);
 }
+
+/* 🆕 FILTER INPUT STYLES */
+
+.filter-input-wrapper {
+  position: relative;
+  padding: var(--space-8);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.filter-input {
+  width: 100%;
+  padding: var(--space-6) var(--space-32) var(--space-6) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.filter-input:focus {
+  outline: var(--focus-outline);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.filter-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.filter-clear {
+  position: absolute;
+  right: var(--space-12);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.filter-clear:hover {
+  color: var(--color-error);
+}
+
+/* ==================== LISTS ==================== */
 
 .positions-list,
 .techs-list {
@@ -844,11 +900,13 @@ select.form-control {
   text-align: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
-.position-card,
-.tech-card {
-  padding: var(--space-10);
+/* ==================== POSITION CARD ==================== */
+
+.position-card {
+  padding: var(--space-8) var(--space-10);
   background-color: rgba(var(--color-teal-500-rgb), 0.15);
   border: 1px solid rgba(var(--color-teal-500-rgb), 0.3);
   border-radius: var(--radius-sm);
@@ -860,40 +918,65 @@ select.form-control {
   text-align: center;
   color: var(--color-text);
   flex-shrink: 0;
-  box-shadow: var(--shadow-xs);
+  min-height: auto;
+  word-break: break-word;
 }
 
-.position-card:hover,
-.tech-card:hover {
+.position-card:hover {
   background-color: rgba(var(--color-teal-500-rgb), 0.25);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
-.position-card:active,
-.tech-card:active {
+.position-card:active {
   opacity: 0.7;
   cursor: grabbing;
 }
 
+/* ==================== TECH CARD (OPTIMIZED) ==================== */
+
 .tech-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 0;
+  padding: var(--space-6) var(--space-8);
   background-color: rgba(var(--color-success-rgb), 0.12);
-  border-color: rgba(var(--color-success-rgb), 0.25);
+  border: 1px solid rgba(var(--color-success-rgb), 0.25);
+  border-radius: var(--radius-sm);
+  cursor: move;
+  user-select: none;
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-align: center;
+  color: var(--color-text);
+  flex-shrink: 0;
+  min-height: auto;
+  max-height: none;
+}
+
+.tech-card:hover {
+  background-color: rgba(var(--color-success-rgb), 0.18);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.tech-card:active {
+  opacity: 0.7;
+  cursor: grabbing;
 }
 
 .tech-name {
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-tight);
+  word-break: break-word;
 }
 
 .tech-position {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-normal);
+  line-height: 1;
+  word-break: break-word;
 }
 
 /* ==================== TABLE AREA (CENTER) ==================== */
@@ -919,7 +1002,7 @@ select.form-control {
   padding: var(--space-32) var(--space-20);
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
 }
 
 /* ==================== TABLE HEADER ROW ==================== */
@@ -935,7 +1018,6 @@ select.form-control {
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-sm);
   user-select: none;
-  box-shadow: var(--shadow-sm);
 }
 
 .table-header-row .col {
@@ -1004,7 +1086,7 @@ select.form-control {
   user-select: none;
   transition: background-color var(--duration-fast) var(--ease-standard);
   font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   min-height: 50px;
 }
 
@@ -1025,14 +1107,13 @@ select.form-control {
 }
 
 .event-stats {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   background-color: var(--color-secondary);
   padding: var(--space-4) var(--space-10);
   border-radius: var(--radius-full);
   white-space: nowrap;
   flex-shrink: 0;
-  border: 1px solid var(--color-border);
 }
 
 /* ==================== ASSIGNMENTS ==================== */
@@ -1066,7 +1147,6 @@ select.form-control {
 
 .assignment-row:hover {
   background-color: var(--color-surface);
-  box-shadow: var(--shadow-xs);
 }
 
 .assignment-row .col {
@@ -1093,9 +1173,7 @@ select.form-control {
   color: var(--color-text);
   font-size: var(--font-size-sm);
   font-family: var(--font-family-base);
-  transition: border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard),
-    background-color var(--duration-fast) var(--ease-standard);
+  transition: all var(--duration-fast) var(--ease-standard);
 }
 
 .cell-input:focus {
@@ -1126,9 +1204,8 @@ select.form-control {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-standard);
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   padding: 0;
-  box-shadow: var(--shadow-xs);
 }
 
 .btn-delete:hover {
@@ -1136,11 +1213,6 @@ select.form-control {
   color: var(--color-btn-primary-text);
   border-color: var(--color-error);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.btn-delete:active {
-  transform: translateY(0);
 }
 
 .btn-delete:focus-visible {
@@ -1170,58 +1242,37 @@ select.form-control {
 
 /* ==================== RESPONSIVE ==================== */
 
-/* Mobile portrait - 480px */
-@media (max-width: 480px) {
-  .schedule-header {
-    padding: var(--space-12);
-  }
-
-  .schedule-header h1 {
-    font-size: var(--font-size-xl);
-  }
-
-  .schedule-content {
-    flex-direction: column;
-  }
-
-  .sidebar,
-  .sidebar-right {
-    width: 100%;
-    height: auto;
-    border-right: none;
-    border-left: none;
-    border-bottom: 2px solid var(--color-border);
-    max-height: 100px;
-    order: initial;
-  }
-
+@media (max-width: 1400px) {
   .sidebar {
-    order: 1;
+    width: 180px;
   }
 
   .sidebar-right {
-    order: 3;
+    width: 180px;
   }
 
-  .table-area {
-    order: 2;
+  .table-header-row,
+  .assignment-row {
+    grid-template-columns: 100px 130px 150px 100px 90px 90px 70px 50px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 160px;
   }
 
-  .section-header {
+  .sidebar-right {
+    width: 160px;
+  }
+
+  .position-card {
     font-size: var(--font-size-xs);
     padding: var(--space-6) var(--space-8);
   }
 
-  .positions-list,
-  .techs-list {
-    gap: var(--space-4);
-    padding: var(--space-6);
-  }
-
-  .position-card,
   .tech-card {
-    padding: var(--space-6);
-    font-size: var(--font-size-xs);
+    padding: var(--space-4) var(--space-6);
   }
 
   .tech-name {
@@ -1230,85 +1281,6 @@ select.form-control {
 
   .tech-position {
     font-size: 10px;
-  }
-
-  .table-header-row,
-  .assignment-row {
-    grid-template-columns: 70px 90px 100px 70px 60px 60px 50px 40px;
-    font-size: var(--font-size-xs);
-  }
-
-  .table-header-row .col,
-  .assignment-row .col {
-    padding: var(--space-8);
-  }
-
-  .event-header-row {
-    padding: var(--space-8);
-    font-size: var(--font-size-sm);
-    gap: var(--space-6);
-  }
-
-  .event-stats {
-    font-size: 10px;
-    padding: var(--space-2) var(--space-6);
-  }
-
-  .cell-input {
-    font-size: var(--font-size-xs);
-    padding: var(--space-4) var(--space-6);
-  }
-
-  .btn-delete {
-    width: 28px;
-    height: 28px;
-    font-size: var(--font-size-sm);
-  }
-}
-
-@media (max-width: 768px) {
-  .schedule-header {
-    padding: var(--space-16);
-  }
-
-  .schedule-header h1 {
-    font-size: var(--font-size-2xl);
-  }
-
-  .sidebar,
-  .sidebar-right {
-    max-height: 120px;
-  }
-
-  .section-header {
-    font-size: var(--font-size-xs);
-    padding: var(--space-8) var(--space-10);
-  }
-
-  .positions-list,
-  .techs-list {
-    gap: var(--space-4);
-    padding: var(--space-6);
-  }
-
-  .position-card,
-  .tech-card {
-    padding: var(--space-8);
-    font-size: var(--font-size-xs);
-  }
-
-  .table-header-row,
-  .assignment-row {
-    grid-template-columns: 80px 100px 110px 80px 70px 70px 60px 40px;
-  }
-
-  .event-header-row {
-    font-size: var(--font-size-sm);
-    padding: var(--space-8) var(--space-10);
-  }
-
-  .event-stats {
-    font-size: 11px;
   }
 }
 
@@ -1344,47 +1316,185 @@ select.form-control {
   .assignment-row {
     grid-template-columns: 80px 110px 120px 80px 70px 70px 60px 40px;
   }
-
-  .event-header-row {
-    gap: var(--space-8);
-  }
 }
 
-@media (max-width: 1200px) {
-  .sidebar {
-    width: 160px;
+@media (max-width: 768px) {
+  .sidebar,
+  .sidebar-right {
+    max-height: 120px;
   }
 
-  .sidebar-right {
-    width: 160px;
+  .section-header {
+    font-size: var(--font-size-xs);
+    padding: var(--space-8) var(--space-10);
+  }
+
+  .filter-input-wrapper {
+    padding: var(--space-6);
+  }
+
+  .filter-input {
+    font-size: var(--font-size-xs);
+    padding: var(--space-4) var(--space-24) var(--space-4) var(--space-6);
+  }
+
+  .positions-list,
+  .techs-list {
+    gap: var(--space-4);
+    padding: var(--space-6);
   }
 
   .position-card,
   .tech-card {
     font-size: var(--font-size-xs);
-    padding: var(--space-8);
+    padding: var(--space-4) var(--space-6);
   }
 
-  .tech-name {
+  .event-header-row {
+    padding: var(--space-8) var(--space-10);
+    font-size: var(--font-size-sm);
+    min-height: 44px;
+  }
+
+  .event-stats {
     font-size: var(--font-size-xs);
-  }
-
-  .tech-position {
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 1400px) {
-  .sidebar {
-    width: 180px;
-  }
-
-  .sidebar-right {
-    width: 180px;
+    padding: var(--space-2) var(--space-8);
   }
 
   .table-header-row,
   .assignment-row {
-    grid-template-columns: 100px 130px 150px 100px 90px 90px 70px 50px;
+    grid-template-columns: 70px 100px 110px 70px 60px 60px 50px 36px;
+  }
+
+  .assignment-row .col {
+    padding: var(--space-8);
+    font-size: var(--font-size-xs);
+  }
+
+  .cell-input {
+    padding: var(--space-4) var(--space-6);
+    font-size: var(--font-size-xs);
+  }
+
+  .btn-delete {
+    width: 28px;
+    height: 28px;
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ==================== MOBILE PORTRAIT (480px) ==================== */
+
+@media (max-width: 480px) {
+  .schedule-header {
+    padding: var(--space-16);
+  }
+
+  .schedule-header h1 {
+    font-size: var(--font-size-2xl);
+  }
+
+  .sidebar,
+  .sidebar-right {
+    max-height: 100px;
+  }
+
+  .section-header {
+    font-size: 10px;
+    padding: var(--space-6) var(--space-8);
+  }
+
+  .filter-input-wrapper {
+    padding: var(--space-4);
+  }
+
+  .filter-input {
+    font-size: 10px;
+    padding: var(--space-2) var(--space-20) var(--space-2) var(--space-4);
+  }
+
+  .filter-clear {
+    right: var(--space-8);
+    font-size: var(--font-size-xs);
+  }
+
+  .positions-list,
+  .techs-list {
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+
+  .position-card {
+    font-size: 10px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .tech-card {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .tech-name {
+    font-size: 10px;
+  }
+
+  .tech-position {
+    font-size: 9px;
+  }
+
+  .event-header-row {
+    grid-template-columns: 24px 1fr auto;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-8);
+    font-size: var(--font-size-xs);
+    min-height: 40px;
+  }
+
+  .toggle {
+    width: 20px;
+    font-size: var(--font-size-xs);
+  }
+
+  .event-stats {
+    font-size: 10px;
+    padding: var(--space-1) var(--space-6);
+  }
+
+  .empty-message {
+    padding: var(--space-16);
+    font-size: var(--font-size-xs);
+    min-height: 50px;
+  }
+
+  .table-header-row,
+  .assignment-row {
+    grid-template-columns: 60px 85px 90px 60px 50px 50px 40px 32px;
+    font-size: 10px;
+  }
+
+  .table-header-row .col {
+    padding: var(--space-6);
+  }
+
+  .assignment-row .col {
+    padding: var(--space-6);
+    font-size: 10px;
+    min-height: 44px;
+  }
+
+  .cell-input {
+    padding: var(--space-2) var(--space-4);
+    font-size: 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .btn-delete {
+    width: 24px;
+    height: 24px;
+    font-size: var(--font-size-xs);
+  }
+
+  .empty-table {
+    padding: var(--space-24) var(--space-16);
+    font-size: var(--font-size-sm);
   }
 }
