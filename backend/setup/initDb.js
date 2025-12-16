@@ -1,5 +1,7 @@
 // backend/setup/initDb.js
+
 // Database initialization - creates tables and exports db instance
+
 // Called once by server.js at startup
 
 import Database from 'better-sqlite3';
@@ -23,7 +25,6 @@ export async function initializeDatabase() {
     }
 
     console.log(`📦 Opening database: ${DBPATH}`);
-
     db = new Database(DBPATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
@@ -144,12 +145,20 @@ export async function initializeDatabase() {
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
       )`,
 
+      // ✅ POSITIONS TABLE - NEW
+      `CREATE TABLE IF NOT EXISTS positions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        createdat DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
       // Indexes
       `CREATE INDEX IF NOT EXISTS idx_events_created ON events(createdat)`,
       `CREATE INDEX IF NOT EXISTS idx_requirements_event ON eventrequirements(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_event ON eventassignments(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_tech ON eventassignments(technicianid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_requirement ON eventassignments(requirementid)`,
+      `CREATE INDEX IF NOT EXISTS idx_positions_name ON positions(name)`,
     ];
 
     let successCount = 0;
@@ -169,8 +178,39 @@ export async function initializeDatabase() {
 
     console.log(`✅ All ${successCount} statements executed`);
     console.log(
-      `✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings`,
+      `✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings, positions`
     );
+
+    // ✅ Initialize sample positions if table is empty
+    try {
+      const checkPositions = db.prepare('SELECT COUNT(*) as count FROM positions');
+      const result = checkPositions.all()[0];
+
+      if (result.count === 0) {
+        console.log('📍 Initializing sample positions...');
+        const insertPosition = db.prepare('INSERT INTO positions (name) VALUES (?)');
+
+        const samplePositions = [
+          'A1', 'A2', 'V1', 'V2', 'LED', 'Set', 'Camera Op',
+          'L1', 'L2', 'PM', 'Strike', 'Projections', 'LD Floater', 'Rigger Lead'
+        ];
+
+        samplePositions.forEach((position) => {
+          try {
+            insertPosition.run(position);
+            console.log(`  ✅ Added position: ${position}`);
+          } catch (err) {
+            // Position might already exist, skip
+          }
+        });
+
+        console.log('✅ Sample positions initialized successfully');
+      } else {
+        console.log(`✅ Positions table ready (${result.count} positions found)`);
+      }
+    } catch (err) {
+      console.warn('⚠️  Could not initialize sample positions:', err.message);
+    }
 
     return db;
   } catch (error) {

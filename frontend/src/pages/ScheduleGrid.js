@@ -1,29 +1,55 @@
-// frontend/src/pages/ScheduleGrid.js - COMPLETE FIXED VERSION
-// This replaces the entire file - ready to use!
+// frontend/src/pages/ScheduleGrid.js - ✅ COMPLETE DRAG-DROP IMPLEMENTATION
 
 import React, { useState, useEffect } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
-import { createRequirement, getEventRequirements, getEventAssignments, deleteAssignment } from '../utils/api';
+import {
+  createRequirement,
+  getEventRequirements,
+  getEventAssignments,
+  deleteAssignment,
+  createAssignment,
+  updateAssignment,
+  getPositions,
+} from '../utils/api';
+import ScheduleGridTable from './ScheduleGrid-Table';
 import '../styles/ScheduleGrid.css';
 
 const ScheduleGrid = ({ onNavigateToEvent }) => {
   const { events, loading: eventsLoading } = useEvents();
   const { technicians, loading: techsLoading } = useTechnicians();
 
-  // Data
+  // ==================== DATA ====================
   const [assignments, setAssignments] = useState([]);
   const [requirements, setRequirements] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  // UI State
+  // ==================== UI STATE ====================
   const [draggedPosition, setDraggedPosition] = useState(null);
   const [draggedTech, setDraggedTech] = useState(null);
+  const [dragPreview, setDragPreview] = useState(null);
   const [expandedEvents, setExpandedEvents] = useState({});
   const [positionFilter, setPositionFilter] = useState('');
   const [techFilter, setTechFilter] = useState('');
 
-  // Load all data from each event
+  // ==================== LOAD DATA ====================
+
+  // Load positions from settings
+  useEffect(() => {
+    const loadPositions = async () => {
+      try {
+        const response = await getPositions();
+        setPositions(response.data || []);
+      } catch (err) {
+        console.warn('Failed to load positions:', err);
+        setPositions([]);
+      }
+    };
+    loadPositions();
+  }, []);
+
+  // Load all requirements and assignments
   useEffect(() => {
     const loadAllData = async () => {
       try {
@@ -31,18 +57,12 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         const allAssignments = [];
         const allRequirements = [];
 
-        console.log('Loading data for events:', events);
-
         for (const event of events) {
           try {
-            console.log(`Fetching data for event ${event.id}...`);
             const [reqResponse, assignResponse] = await Promise.all([
               getEventRequirements(event.id),
-              getEventAssignments(event.id)
+              getEventAssignments(event.id),
             ]);
-
-            console.log(`Event ${event.id} requirements:`, reqResponse.data);
-            console.log(`Event ${event.id} assignments:`, assignResponse.data);
 
             if (reqResponse.data) allRequirements.push(...reqResponse.data);
             if (assignResponse.data) allAssignments.push(...assignResponse.data);
@@ -51,15 +71,12 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
           }
         }
 
-        console.log('All requirements loaded:', allRequirements);
-        console.log('All assignments loaded:', allAssignments);
-
         setAssignments(allAssignments);
         setRequirements(allRequirements);
 
         // Expand all events by default
         const expanded = {};
-        events.forEach(e => {
+        events.forEach((e) => {
           expanded[e.id] = true;
         });
         setExpandedEvents(expanded);
@@ -79,52 +96,50 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
 
   // ==================== HELPERS ====================
 
-  const getTech = (techId) => technicians.find(t => t.id === techId);
-  const getEvent = (eventId) => events.find(e => e.id === eventId);
-  const getRequirement = (reqId) => requirements.find(r => r.id === reqId);
+  const getTech = (techId) => technicians.find((t) => t.id === techId);
+  const getEvent = (eventId) => events.find((e) => e.id === eventId);
+  const getRequirement = (reqId) => requirements.find((r) => r.id === reqId);
 
-  // Get all positions (unique)
+  // Get all unique positions from requirements
   const getAvailablePositions = () => {
-    const positions = new Set();
-    requirements.forEach(r => {
-      if (r.position) positions.add(r.position);
+    const posSet = new Set(positions);
+    requirements.forEach((r) => {
+      if (r.position) posSet.add(r.position);
     });
-    return Array.from(positions).sort();
+    return Array.from(posSet).sort();
   };
 
   // Filtered positions
   const getFilteredPositions = () => {
-    const positions = getAvailablePositions();
-    if (!positionFilter.trim()) return positions;
-    return positions.filter(p =>
+    const allPos = getAvailablePositions();
+    if (!positionFilter.trim()) return allPos;
+    return allPos.filter((p) =>
       p.toLowerCase().includes(positionFilter.toLowerCase())
     );
   };
 
-  // Get unassigned technicians for drag pool
+  // Get unassigned technicians
   const getUnassignedTechs = () => {
-    return technicians.filter(t => {
-      const assigned = assignments.some(a => a.technician_id === t.id);
+    return technicians.filter((t) => {
+      const assigned = assignments.some((a) => a.technicianid === t.id);
       return !assigned;
     });
   };
 
-  // Filtered techs
+  // Filtered unassigned techs
   const getFilteredTechs = () => {
     const unassigned = getUnassignedTechs();
     if (!techFilter.trim()) return unassigned;
-    return unassigned.filter(t =>
-      t.name.toLowerCase().includes(techFilter.toLowerCase()) ||
-      (t.position && t.position.toLowerCase().includes(techFilter.toLowerCase()))
+    return unassigned.filter(
+      (t) =>
+        t.name.toLowerCase().includes(techFilter.toLowerCase()) ||
+        (t.position && t.position.toLowerCase().includes(techFilter.toLowerCase()))
     );
   };
 
-  // Get assignments for a specific event
-  const getEventAssignmentsForEvent = (eventId) => {
-    return assignments.filter(a => {
-      const req = getRequirement(a.requirement_id);
-      return req && req.event_id === eventId;
-    });
+  // Get requirements for a specific event
+  const getEventRequirementsForEvent = (eventId) => {
+    return requirements.filter((r) => r.eventid === eventId);
   };
 
   // ==================== DRAG & DROP ====================
@@ -132,11 +147,13 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const handlePositionDragStart = (e, position) => {
     setDraggedPosition(position);
     e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('position', position);
   };
 
   const handleTechDragStart = (e, tech) => {
     setDraggedTech(tech);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('tech', JSON.stringify(tech));
   };
 
   const handleEventDragOver = (e) => {
@@ -144,93 +161,83 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     e.dataTransfer.dropEffect = 'copy';
   };
 
-  // ✅ FIXED: Now calls the API!
+  // CREATE REQUIREMENT when position dropped on event
   const handleEventDrop = async (e, eventId) => {
     e.preventDefault();
-    
-    if (draggedPosition) {
-      const event = getEvent(eventId);
-      if (!event) return;
 
-      try {
-        // ✅ BUILD PROPER PAYLOAD with field names matching backend
-        const payload = {
-          event_id: eventId,
-          position: draggedPosition,
-          room_or_location: event.eventName || event.name || 'TBD',
-          requirement_date: event.start_date || new Date().toISOString().split('T')[0],
-          start_time: '09:00',
-          end_time: '17:00',
-          techs_needed: 1,
-        };
-
-        console.log('📤 Sending payload:', JSON.stringify(payload, null, 2));
-
-        // ✅ CALL THE API!
-        const response = await createRequirement(payload);
-        console.log('✅ Requirement created:', response.data);
-
-        // ✅ REFETCH DATA
-        const reqs = await getEventRequirements(eventId);
-        setRequirements(prev => {
-          const filtered = prev.filter(r => r.event_id !== eventId);
-          return [...filtered, ...reqs.data];
-        });
-
-        setExpandedEvents(prev => ({ ...prev, [eventId]: true }));
-      } catch (err) {
-        console.error('❌ Failed to create requirement:', err);
-        const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
-        alert(`Failed to create requirement:\n\n${errorMsg}`);
-      }
+    if (!draggedPosition) {
+      setDraggedPosition(null);
+      return;
     }
 
-    if (draggedTech) {
-      setDraggedTech(null);
+    const event = getEvent(eventId);
+    if (!event) {
+      setDraggedPosition(null);
+      return;
+    }
+
+    try {
+      // Build payload matching backend schema
+      const payload = {
+        eventid: eventId,
+        position: draggedPosition,
+        roomorlocation: event.name || 'TBD',
+        requirementdate: event.startdate || new Date().toISOString().split('T')[0],
+        starttime: '09:00',
+        endtime: '17:00',
+        techsneeded: 1,
+      };
+
+      console.log('📤 Creating requirement:', payload);
+      const response = await createRequirement(payload);
+      console.log('✅ Requirement created:', response.data);
+
+      // Refetch requirements for this event
+      const reqs = await getEventRequirements(eventId);
+      setRequirements((prev) => {
+        const filtered = prev.filter((r) => r.eventid !== eventId);
+        return [...filtered, ...(reqs.data || [])];
+      });
+
+      setExpandedEvents((prev) => ({
+        ...prev,
+        [eventId]: true,
+      }));
+    } catch (err) {
+      console.error('❌ Error creating requirement:', err);
+      alert(`Failed to create requirement:\n\n${err.response?.data?.error || err.message}`);
     }
 
     setDraggedPosition(null);
   };
 
-  // ==================== CELL EDITING ====================
-
-  const handleCellChange = (assignmentId, field, value) => {
-    setAssignments(assignments.map(a =>
-      a.id === assignmentId ? { ...a, [field]: value } : a
-    ));
-  };
+  // ==================== ACTIONS ====================
 
   const handleDeleteAssignment = async (assignmentId) => {
     if (!window.confirm('Remove this assignment?')) return;
+
     try {
       await deleteAssignment(assignmentId);
-      setAssignments(assignments.filter(a => a.id !== assignmentId));
+      setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
     } catch (err) {
       console.error('Error deleting assignment:', err);
       alert(`Failed to delete: ${err.message}`);
     }
   };
 
-  // ==================== TIME FORMATTING ====================
-
-  const formatTime = (isoString) => {
-    if (!isoString) return '';
-    if (typeof isoString === 'string' && isoString.includes(':')) {
-      return isoString.substring(0, 5);
-    }
-    return '';
+  const handleToggleEvent = (eventId) => {
+    setExpandedEvents((prev) => ({
+      ...prev,
+      [eventId]: !prev[eventId],
+    }));
   };
 
   // ==================== RENDER ====================
 
   if (eventsLoading || techsLoading || loadingData) {
-    return <div className="schedule-grid loading-state">Loading schedule...</div>;
-  }
-
-  if (!events || events.length === 0) {
     return (
-      <div className="schedule-grid empty-state">
-        No events found. Create an event to get started.
+      <div className="schedule-grid">
+        <div className="loading-spinner">Loading schedule data...</div>
       </div>
     );
   }
@@ -240,262 +247,190 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
 
   return (
     <div className="schedule-grid">
-      {/* ========== HEADER ========== */}
-      <div className="schedule-header">
-        <h1>Schedule Grid - Table View</h1>
-      </div>
-
-      <div className="schedule-container">
-        {/* ========== LEFT SIDEBAR: POSITIONS ========== */}
-        <div className="sidebar">
-          <div className="section-header">📍 Positions ({filteredPositions.length})</div>
-          
-          <div className="filter-input-wrapper">
-            <input
-              type="text"
-              className="filter-input"
-              placeholder="Search positions..."
-              value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
-            />
-            {positionFilter && (
-              <button
-                className="filter-clear"
-                onClick={() => setPositionFilter('')}
-                title="Clear filter"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          <div className="positions-list">
-            {filteredPositions.length > 0 ? (
-              filteredPositions.map(position => (
-                <div
-                  key={position}
-                  className="position-card"
-                  draggable
-                  onDragStart={(e) => handlePositionDragStart(e, position)}
-                  title={`Drag to event to create requirement`}
-                >
-                  📌 {position}
-                </div>
-              ))
-            ) : (
-              <div className="empty-filter-message">No positions match</div>
-            )}
-          </div>
+      {/* LEFT SIDEBAR - POSITIONS */}
+      <div className="schedule-sidebar schedule-sidebar--left">
+        <div className="sidebar-header">
+          <h3>
+            📍 Positions <span className="count">({filteredPositions.length})</span>
+          </h3>
         </div>
 
-        {/* ========== CENTER: EVENTS & REQUIREMENTS ========== */}
-        <div className="events-container">
-          {events.map(event => {
-            const eventReqs = requirements.filter(r => r.event_id === event.id);
-            const eventAssigns = getEventAssignmentsForEvent(event.id);
+        <input
+          type="text"
+          className="sidebar-search"
+          placeholder="Search positions..."
+          value={positionFilter}
+          onChange={(e) => setPositionFilter(e.target.value)}
+        />
+
+        <div className="positions-list">
+          {filteredPositions.length === 0 ? (
+            <div className="empty-state">
+              <p>No positions available</p>
+              <small>Add positions in Settings → Positions</small>
+            </div>
+          ) : (
+            filteredPositions.map((position) => (
+              <div
+                key={position}
+                className="position-item"
+                draggable
+                onDragStart={(e) => handlePositionDragStart(e, position)}
+                onClick={() => setDragPreview(null)}
+              >
+                <span className="drag-handle">⋮⋮</span>
+                <span className="position-name">{position}</span>
+                <span className="position-count">
+                  {requirements.filter((r) => r.position === position).length}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="sidebar-hint">Drag a position to an event to create a requirement</div>
+      </div>
+
+      {/* CENTER - EVENTS GRID */}
+      <div className="schedule-center">
+        <div className="events-grid">
+          {events.map((event) => {
+            const eventReqs = getEventRequirementsForEvent(event.id);
             const isExpanded = expandedEvents[event.id];
 
             return (
-              <div key={event.id} className="event-section">
-                {/* Event Header */}
-                <div className="event-header-row">
-                  <button
-                    className="toggle"
-                    onClick={() =>
-                      setExpandedEvents(prev => ({
-                        ...prev,
-                        [event.id]: !prev[event.id],
-                      }))
-                    }
-                  >
-                    {isExpanded ? '▼' : '▶'}
-                  </button>
-                  <div
-                    className="event-name"
-                    onClick={() => onNavigateToEvent?.(event.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {event.eventName || event.name}
-                  </div>
-                  <div className="event-stats">
-                    {eventReqs.length} reqs · {eventAssigns.length} assigned
-                  </div>
+              <div key={event.id} className="event-card">
+                <div
+                  className="event-header"
+                  onClick={() => handleToggleEvent(event.id)}
+                >
+                  <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                  <h3>{event.name}</h3>
+                  <span className="event-meta">
+                    {eventReqs.length} req{eventReqs.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
 
-                {/* Requirements Table (expanded) */}
-                {isExpanded && eventReqs.length > 0 && (
-                  <div className="requirements-table">
-                    <div className="table-header-row">
-                      <div className="col">Position</div>
-                      <div className="col">Location</div>
-                      <div className="col">Date</div>
-                      <div className="col">In</div>
-                      <div className="col">Out</div>
-                      <div className="col">Techs</div>
-                      <div className="col">Assigned</div>
-                      <div className="col">Actions</div>
-                    </div>
+                {isExpanded && (
+                  <div
+                    className="event-drop-zone"
+                    onDragOver={handleEventDragOver}
+                    onDrop={(e) => handleEventDrop(e, event.id)}
+                  >
+                    {eventReqs.length === 0 ? (
+                      <div className="empty-zone">
+                        <p>Drop a position here to create a requirement</p>
+                      </div>
+                    ) : (
+                      <table className="requirements-table">
+                        <thead>
+                          <tr>
+                            <th>Position</th>
+                            <th>Location</th>
+                            <th>Date</th>
+                            <th>Assigned</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {eventReqs.map((req) => {
+                            const reqAssignments = assignments.filter(
+                              (a) => a.requirementid === req.id
+                            );
 
-                    {eventReqs.map(req => {
-                      const reqAssigns = assignments.filter(
-                        a => a.requirement_id === req.id
-                      );
-                      const assignedNames = reqAssigns
-                        .map(a => getTech(a.technician_id)?.name)
-                        .filter(Boolean)
-                        .join(', ') || '—';
-
-                      return (
-                        <div key={req.id} className="assignment-row">
-                          <div className="col">{req.position || '—'}</div>
-                          <div className="col">
-                            {req.room_or_location || req.roomorlocation || '—'}
-                          </div>
-                          <div className="col">
-                            {req.requirement_date || req.requirementdate || '—'}
-                          </div>
-                          <div className="col">
-                            {formatTime(req.start_time || req.starttime) || '—'}
-                          </div>
-                          <div className="col">
-                            {formatTime(req.end_time || req.endtime) || '—'}
-                          </div>
-                          <div className="col">
-                            {req.techs_needed || req.techsneeded || 0}
-                          </div>
-                          <div className="col assigned-count">
-                            {reqAssigns.length}/{req.techs_needed || req.techsneeded || 0}
-                          </div>
-                          <div className="col actions">
-                            <button
-                              className="btn-secondary btn-sm"
-                              onClick={() => onNavigateToEvent?.(event.id)}
-                              title="Edit in event details"
-                            >
-                              ✎
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Assignments Table (nested under expanded event) */}
-                {isExpanded && eventAssigns.length > 0 && (
-                  <div className="assignments-table">
-                    <div className="table-header-row">
-                      <div className="col">Technician</div>
-                      <div className="col">Position</div>
-                      <div className="col">Date</div>
-                      <div className="col">In</div>
-                      <div className="col">Out</div>
-                      <div className="col">Hours</div>
-                      <div className="col">Rate</div>
-                      <div className="col">Actions</div>
-                    </div>
-
-                    {eventAssigns.map(assign => {
-                      const tech = getTech(assign.technician_id);
-                      return (
-                        <div key={assign.id} className="assignment-row">
-                          <div className="col">{tech?.name || '—'}</div>
-                          <div className="col">{assign.position || '—'}</div>
-                          <div className="col">{assign.assignmentdate || '—'}</div>
-                          <div className="col">{formatTime(assign.starttime) || '—'}</div>
-                          <div className="col">{formatTime(assign.endtime) || '—'}</div>
-                          <div className="col">{assign.hoursworked || '—'}</div>
-                          <div className="col">{assign.ratetype || '—'}</div>
-                          <div className="col actions">
-                            <button
-                              className="btn-delete"
-                              onClick={() => handleDeleteAssignment(assign.id)}
-                              title="Delete assignment"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {isExpanded && eventReqs.length === 0 && (
-                  <div className="empty-table">
-                    No requirements for this event. Drag a position here to create one.
+                            return (
+                              <tr key={req.id} className="requirement-row">
+                                <td className="position-col">{req.position}</td>
+                                <td className="location-col">{req.roomorlocation}</td>
+                                <td className="date-col">
+                                  {new Date(req.requirementdate).toLocaleDateString()}
+                                </td>
+                                <td className="assigned-col">
+                                  {reqAssignments.length > 0 ? (
+                                    reqAssignments.map((assign, idx) => (
+                                      <span key={assign.id} className="assigned-tech">
+                                        {getTech(assign.technicianid)?.name || 'Unknown'}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="not-assigned">NEEDED</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-
-        {/* ========== RIGHT SIDEBAR: TECHNICIANS ========== */}
-        <div className="sidebar-right">
-          <div className="section-header">👤 Available Techs ({filteredTechs.length})</div>
-          
-          <div className="filter-input-wrapper">
-            <input
-              type="text"
-              className="filter-input"
-              placeholder="Search techs..."
-              value={techFilter}
-              onChange={(e) => setTechFilter(e.target.value)}
-            />
-            {techFilter && (
-              <button
-                className="filter-clear"
-                onClick={() => setTechFilter('')}
-                title="Clear filter"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          <div className="techs-list">
-            {filteredTechs.length > 0 ? (
-              filteredTechs.map(tech => (
-                <div
-                  key={tech.id}
-                  className="tech-card"
-                  draggable
-                  onDragStart={(e) => handleTechDragStart(e, tech)}
-                  title="Drag to requirement to assign"
-                >
-                  <div className="tech-name">{tech.name}</div>
-                  {tech.position && <div className="tech-position">{tech.position}</div>}
-                </div>
-              ))
-            ) : (
-              <div className="empty-filter-message">No techs available</div>
-            )}
-          </div>
-        </div>
       </div>
 
-      {/* Drop zone hint overlay on events container */}
-      {draggedPosition && (
-        <div
-          className="schedule-drop-zone"
-          onDragOver={handleEventDragOver}
-          onDrop={(e) => {
-            // This won't actually capture the drop since individual events do,
-            // but it provides visual feedback
-          }}
-          style={{
-            position: 'absolute',
-            pointerEvents: 'none',
-            fontSize: '12px',
-            color: 'var(--color-primary)',
-            opacity: 0.6,
-          }}
-        >
-          Drop to create
+      {/* RIGHT SIDEBAR - TECHNICIANS */}
+      <div className="schedule-sidebar schedule-sidebar--right">
+        <div className="sidebar-header">
+          <h3>
+            👥 Available Techs <span className="count">({filteredTechs.length})</span>
+          </h3>
         </div>
-      )}
+
+        <input
+          type="text"
+          className="sidebar-search"
+          placeholder="Search techs..."
+          value={techFilter}
+          onChange={(e) => setTechFilter(e.target.value)}
+        />
+
+        <div className="techs-list">
+          {filteredTechs.length === 0 ? (
+            <div className="empty-state">
+              <p>No available technicians</p>
+              <small>All techs are currently assigned</small>
+            </div>
+          ) : (
+            filteredTechs.map((tech) => (
+              <div
+                key={tech.id}
+                className="tech-item"
+                draggable
+                onDragStart={(e) => handleTechDragStart(e, tech)}
+              >
+                <span className="drag-handle">⋮⋮</span>
+                <span className="tech-name">{tech.name}</span>
+                {tech.position && <span className="tech-position">{tech.position}</span>}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="sidebar-hint">Drag a tech to a requirement's table row to assign</div>
+      </div>
+
+      {/* FULL TABLE VIEW - Pass assignments and handlers */}
+      <div className="schedule-table-container">
+        <ScheduleGridTable
+          assignments={assignments}
+          requirements={requirements}
+          events={events}
+          technicians={technicians}
+          draggedTech={draggedTech}
+          onDeleteAssignment={handleDeleteAssignment}
+          onCreateAssignment={async (data) => {
+            try {
+              const response = await createAssignment(data);
+              setAssignments((prev) => [...prev, response.data]);
+              setDraggedTech(null);
+            } catch (err) {
+              console.error('Error creating assignment:', err);
+              alert(`Failed to assign: ${err.response?.data?.error || err.message}`);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 };

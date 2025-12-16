@@ -1,5 +1,7 @@
 // backend/routes/index.js
+
 // All core API routes in one place
+
 // Schema: camelCase fields matching initDb.js
 
 import express from 'express';
@@ -54,7 +56,7 @@ router.post('/events', async (req, res, next) => {
         enddate || null,
         new Date().toISOString(),
         new Date().toISOString(),
-      ],
+      ]
     );
 
     const [event] = await query('SELECT * FROM events WHERE id = ?', [id]);
@@ -200,16 +202,16 @@ router.post('/technicians', async (req, res, next) => {
         id,
         name,
         position || null,
-        hourlyrate || 0,
-        halfdayrate || 0,
-        fulldayrate || 0,
+        hourlyrate || 50,
+        halfdayrate || 250,
+        fulldayrate || 500,
         new Date().toISOString(),
         new Date().toISOString(),
-      ],
+      ]
     );
 
-    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    res.status(201).json(tech);
+    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    res.status(201).json(technician);
   } catch (err) {
     next(err);
   }
@@ -218,9 +220,9 @@ router.post('/technicians', async (req, res, next) => {
 router.get('/technicians/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    if (!tech) return res.status(404).json({ error: 'Technician not found' });
-    res.json(tech);
+    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    if (!technician) return res.status(404).json({ error: 'Technician not found' });
+    res.json(technician);
   } catch (err) {
     next(err);
   }
@@ -231,22 +233,42 @@ router.put('/technicians/:id', async (req, res, next) => {
     const { id } = req.params;
     const { name, position, hourlyrate, halfdayrate, fulldayrate } = req.body;
 
-    await run(
-      `UPDATE technicians SET name = ?, position = ?, hourlyrate = ?, halfdayrate = ?, fulldayrate = ?, updatedat = ? WHERE id = ?`,
-      [
-        name,
-        position || null,
-        hourlyrate || 0,
-        halfdayrate || 0,
-        fulldayrate || 0,
-        new Date().toISOString(),
-        id,
-      ],
-    );
+    const updates = [];
+    const values = [];
 
-    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    if (!tech) return res.status(404).json({ error: 'Technician not found' });
-    res.json(tech);
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (position !== undefined) {
+      updates.push('position = ?');
+      values.push(position || null);
+    }
+    if (hourlyrate !== undefined) {
+      updates.push('hourlyrate = ?');
+      values.push(hourlyrate);
+    }
+    if (halfdayrate !== undefined) {
+      updates.push('halfdayrate = ?');
+      values.push(halfdayrate);
+    }
+    if (fulldayrate !== undefined) {
+      updates.push('fulldayrate = ?');
+      values.push(fulldayrate);
+    }
+
+    updates.push('updatedat = ?');
+    values.push(new Date().toISOString());
+    values.push(id);
+
+    if (updates.length > 1) {
+      const sql = `UPDATE technicians SET ${updates.join(', ')} WHERE id = ?`;
+      await run(sql, values);
+    }
+
+    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    if (!technician) return res.status(404).json({ error: 'Technician not found' });
+    res.json(technician);
   } catch (err) {
     next(err);
   }
@@ -255,6 +277,7 @@ router.put('/technicians/:id', async (req, res, next) => {
 router.delete('/technicians/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    await run('DELETE FROM eventassignments WHERE technicianid = ?', [id]);
     await run('DELETE FROM technicians WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
@@ -263,15 +286,24 @@ router.delete('/technicians/:id', async (req, res, next) => {
 });
 
 // =============================================
-// REQUIREMENTS CRUD
+// EVENT REQUIREMENTS CRUD
 // =============================================
 
-router.get('/events/:eventId/requirements', async (req, res, next) => {
+router.get('/requirements', async (req, res, next) => {
   try {
-    const { eventId } = req.params;
+    const requirements = await query('SELECT * FROM eventrequirements ORDER BY requirementdate DESC');
+    res.json(requirements);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/events/:eventid/requirements', async (req, res, next) => {
+  try {
+    const { eventid } = req.params;
     const requirements = await query(
-      'SELECT * FROM eventrequirements WHERE eventid = ? ORDER BY requirementdate ASC, settime ASC',
-      [eventId],
+      'SELECT * FROM eventrequirements WHERE eventid = ? ORDER BY requirementdate DESC',
+      [eventid]
     );
     res.json(requirements);
   } catch (err) {
@@ -279,41 +311,43 @@ router.get('/events/:eventId/requirements', async (req, res, next) => {
   }
 });
 
-router.post('/events/:eventId/requirements', async (req, res, next) => {
+router.post('/requirements', async (req, res, next) => {
   try {
-    const { eventId } = req.params;
     const id = uuid();
     const {
-      position,
-      roomorlocation,
+      eventid,
       requirementdate,
       requirementenddate,
+      roomorlocation,
       settime,
-      striketime,
       starttime,
       endtime,
+      striketime,
+      position,
       techsneeded,
     } = req.body;
 
     await run(
-      `INSERT INTO eventrequirements 
-       (id, eventid, position, roomorlocation, requirementdate, requirementenddate, settime, striketime, starttime, endtime, techsneeded, createdat, updatedat)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO eventrequirements (
+        id, eventid, requirementdate, requirementenddate, roomorlocation,
+        settime, starttime, endtime, striketime, position, techsneeded,
+        createdat, updatedat
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        eventId,
-        position || null,
-        roomorlocation || null,
+        eventid,
         requirementdate || null,
         requirementenddate || null,
+        roomorlocation || null,
         settime || null,
+        starttime,
+        endtime,
         striketime || null,
-        starttime || null,
-        endtime || null,
+        position || null,
         techsneeded || 1,
         new Date().toISOString(),
         new Date().toISOString(),
-      ],
+      ]
     );
 
     const [requirement] = await query('SELECT * FROM eventrequirements WHERE id = ?', [id]);
@@ -323,72 +357,51 @@ router.post('/events/:eventId/requirements', async (req, res, next) => {
   }
 });
 
+router.get('/requirements/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [requirement] = await query('SELECT * FROM eventrequirements WHERE id = ?', [id]);
+    if (!requirement) return res.status(404).json({ error: 'Requirement not found' });
+    res.json(requirement);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/requirements/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {
-      position,
-      roomorlocation,
-      requirementdate,
-      requirementenddate,
-      settime,
-      striketime,
-      starttime,
-      endtime,
-      techsneeded,
-    } = req.body;
-
     const updates = [];
     const values = [];
+    const updateFields = [
+      'requirementdate',
+      'requirementenddate',
+      'roomorlocation',
+      'settime',
+      'starttime',
+      'endtime',
+      'striketime',
+      'position',
+      'techsneeded',
+    ];
 
-    if (position !== undefined) {
-      updates.push('position = ?');
-      values.push(position);
-    }
-    if (roomorlocation !== undefined) {
-      updates.push('roomorlocation = ?');
-      values.push(roomorlocation);
-    }
-    if (requirementdate !== undefined) {
-      updates.push('requirementdate = ?');
-      values.push(requirementdate);
-    }
-    if (requirementenddate !== undefined) {
-      updates.push('requirementenddate = ?');
-      values.push(requirementenddate);
-    }
-    if (settime !== undefined) {
-      updates.push('settime = ?');
-      values.push(settime);
-    }
-    if (striketime !== undefined) {
-      updates.push('striketime = ?');
-      values.push(striketime);
-    }
-    if (starttime !== undefined) {
-      updates.push('starttime = ?');
-      values.push(starttime);
-    }
-    if (endtime !== undefined) {
-      updates.push('endtime = ?');
-      values.push(endtime);
-    }
-    if (techsneeded !== undefined) {
-      updates.push('techsneeded = ?');
-      values.push(techsneeded);
-    }
+    updateFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = ?`);
+        values.push(req.body[field] || null);
+      }
+    });
+
+    if (updates.length === 0) return res.json({ message: 'No updates' });
 
     updates.push('updatedat = ?');
     values.push(new Date().toISOString());
     values.push(id);
 
-    if (updates.length > 1) {
-      const sql = `UPDATE eventrequirements SET ${updates.join(', ')} WHERE id = ?`;
-      await run(sql, values);
-    }
+    const sql = `UPDATE eventrequirements SET ${updates.join(', ')} WHERE id = ?`;
+    await run(sql, values);
 
     const [requirement] = await query('SELECT * FROM eventrequirements WHERE id = ?', [id]);
-    if (!requirement) return res.status(404).json({ error: 'Requirement not found' });
     res.json(requirement);
   } catch (err) {
     next(err);
@@ -407,21 +420,24 @@ router.delete('/requirements/:id', async (req, res, next) => {
 });
 
 // =============================================
-// ASSIGNMENTS CRUD
+// EVENT ASSIGNMENTS CRUD
 // =============================================
 
-router.get('/events/:eventId/assignments', async (req, res, next) => {
+router.get('/assignments', async (req, res, next) => {
   try {
-    const { eventId } = req.params;
+    const assignments = await query('SELECT * FROM eventassignments ORDER BY assignmentdate DESC');
+    res.json(assignments);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/events/:eventid/assignments', async (req, res, next) => {
+  try {
+    const { eventid } = req.params;
     const assignments = await query(
-      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
-              e.name AS eventname, e.clientname 
-       FROM eventassignments ea 
-       JOIN technicians t ON t.id = ea.technicianid 
-       JOIN events e ON e.id = ea.eventid 
-       WHERE ea.eventid = ? 
-       ORDER BY ea.assignmentdate ASC, ea.starttime ASC, ea.createdat ASC`,
-      [eventId],
+      'SELECT * FROM eventassignments WHERE eventid = ? ORDER BY assignmentdate DESC',
+      [eventid]
     );
     res.json(assignments);
   } catch (err) {
@@ -429,16 +445,14 @@ router.get('/events/:eventId/assignments', async (req, res, next) => {
   }
 });
 
-router.post('/events/:eventId/assignments', async (req, res, next) => {
+router.post('/assignments', async (req, res, next) => {
   try {
-    const { eventId } = req.params;
     const id = uuid();
     const {
+      eventid,
       technicianid,
+      requirementid,
       position,
-      assignmentdate,
-      starttime,
-      endtime,
       roomorlocation,
       hoursworked,
       basehours,
@@ -453,31 +467,32 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
       billfulldayrate,
       calculatedpay,
       customerbill,
-      requirementid,
       notes,
+      assignmentdate,
+      starttime,
+      endtime,
     } = req.body;
 
     await run(
-      `INSERT INTO eventassignments 
-        (id, eventid, technicianid, position, assignmentdate, starttime, endtime, roomorlocation,
-         hoursworked, basehours, othours, dothours, ratetype, 
-         techhourlyrate, techhalfdayrate, techfulldayrate, 
-         billhourlyrate, billhalfdayrate, billfulldayrate, 
-         calculatedpay, customerbill, requirementid, notes, createdat, updatedat) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO eventassignments (
+        id, eventid, technicianid, requirementid, position, roomorlocation,
+        hoursworked, basehours, othours, dothours, ratetype,
+        techhourlyrate, techhalfdayrate, techfulldayrate,
+        billhourlyrate, billhalfdayrate, billfulldayrate,
+        calculatedpay, customerbill, notes, assignmentdate,
+        starttime, endtime, createdat, updatedat
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        eventId,
+        eventid,
         technicianid,
+        requirementid || null,
         position || null,
-        assignmentdate || null,
-        starttime || null,
-        endtime || null,
         roomorlocation || null,
-        parseFloat(hoursworked) || 0,
-        parseFloat(basehours) || 0,
-        parseFloat(othours) || 0,
-        parseFloat(dothours) || 0,
+        hoursworked || 0,
+        basehours || 0,
+        othours || 0,
+        dothours || 0,
         ratetype || null,
         techhourlyrate || null,
         techhalfdayrate || null,
@@ -485,26 +500,30 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
         billhourlyrate || null,
         billhalfdayrate || null,
         billfulldayrate || null,
-        parseFloat(calculatedpay) || 0,
-        parseFloat(customerbill) || 0,
-        requirementid || null,
+        calculatedpay || 0,
+        customerbill || 0,
         notes || null,
+        assignmentdate || null,
+        starttime || null,
+        endtime || null,
         new Date().toISOString(),
         new Date().toISOString(),
-      ],
+      ]
     );
 
-    const [assignment] = await query(
-      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
-              e.name AS eventname, e.clientname 
-       FROM eventassignments ea 
-       JOIN technicians t ON t.id = ea.technicianid 
-       JOIN events e ON e.id = ea.eventid 
-       WHERE ea.id = ?`,
-      [id],
-    );
-
+    const [assignment] = await query('SELECT * FROM eventassignments WHERE id = ?', [id]);
     res.status(201).json(assignment);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/assignments/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [assignment] = await query('SELECT * FROM eventassignments WHERE id = ?', [id]);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
+    res.json(assignment);
   } catch (err) {
     next(err);
   }
@@ -513,77 +532,48 @@ router.post('/events/:eventId/assignments', async (req, res, next) => {
 router.patch('/assignments/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {
-      hoursworked,
-      basehours,
-      othours,
-      dothours,
-      position,
-      roomorlocation,
-      assignmentdate,
-      starttime,
-      endtime,
-      ratetype,
-      techhourlyrate,
-      techhalfdayrate,
-      techfulldayrate,
-      billhourlyrate,
-      billhalfdayrate,
-      billfulldayrate,
-      calculatedpay,
-      customerbill,
-      notes,
-    } = req.body;
+    const updates = [];
+    const values = [];
+    const updateFields = [
+      'requirementid',
+      'position',
+      'roomorlocation',
+      'hoursworked',
+      'basehours',
+      'othours',
+      'dothours',
+      'ratetype',
+      'techhourlyrate',
+      'techhalfdayrate',
+      'techfulldayrate',
+      'billhourlyrate',
+      'billhalfdayrate',
+      'billfulldayrate',
+      'calculatedpay',
+      'customerbill',
+      'notes',
+      'assignmentdate',
+      'starttime',
+      'endtime',
+    ];
 
-    const updates = {};
-    if (hoursworked !== undefined) updates.hoursworked = hoursworked;
-    if (basehours !== undefined) updates.basehours = basehours;
-    if (othours !== undefined) updates.othours = othours;
-    if (dothours !== undefined) updates.dothours = dothours;
-    if (position !== undefined) updates.position = position;
-    if (roomorlocation !== undefined) updates.roomorlocation = roomorlocation;
-    if (assignmentdate !== undefined) updates.assignmentdate = assignmentdate;
-    if (starttime !== undefined) updates.starttime = starttime;
-    if (endtime !== undefined) updates.endtime = endtime;
-    if (ratetype !== undefined) updates.ratetype = ratetype;
-    if (techhourlyrate !== undefined) updates.techhourlyrate = techhourlyrate;
-    if (techhalfdayrate !== undefined) updates.techhalfdayrate = techhalfdayrate;
-    if (techfulldayrate !== undefined) updates.techfulldayrate = techfulldayrate;
-    if (billhourlyrate !== undefined) updates.billhourlyrate = billhourlyrate;
-    if (billhalfdayrate !== undefined) updates.billhalfdayrate = billhalfdayrate;
-    if (billfulldayrate !== undefined) updates.billfulldayrate = billfulldayrate;
-    if (calculatedpay !== undefined) updates.calculatedpay = calculatedpay;
-    if (customerbill !== undefined) updates.customerbill = customerbill;
-    if (notes !== undefined) updates.notes = notes;
+    updateFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = ?`);
+        values.push(req.body[field] || null);
+      }
+    });
 
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
+    if (updates.length === 0) return res.json({ message: 'No updates' });
 
-    updates.updatedat = new Date().toISOString();
-
-    const setClause = Object.keys(updates)
-      .map((key) => `${key} = ?`)
-      .join(', ');
-    const values = Object.values(updates);
+    updates.push('updatedat = ?');
+    values.push(new Date().toISOString());
     values.push(id);
 
-    await run(`UPDATE eventassignments SET ${setClause} WHERE id = ?`, values);
+    const sql = `UPDATE eventassignments SET ${updates.join(', ')} WHERE id = ?`;
+    await run(sql, values);
 
-    const [assignment] = await query(
-      `SELECT ea.*, t.name AS technicianname, t.position AS technicianprimaryposition, 
-              e.name AS eventname, e.clientname 
-       FROM eventassignments ea 
-       JOIN technicians t ON t.id = ea.technicianid 
-       JOIN events e ON e.id = ea.eventid 
-       WHERE ea.id = ?`,
-      [id],
-    );
-
-    if (!assignment) {
-      return res.status(404).json({ error: 'Assignment not found' });
-    }
-
+    const [assignment] = await query('SELECT * FROM eventassignments WHERE id = ?', [id]);
     res.json(assignment);
   } catch (err) {
     next(err);
@@ -601,93 +591,83 @@ router.delete('/assignments/:id', async (req, res, next) => {
 });
 
 // =============================================
-// SETTINGS
+// POSITIONS ROUTES ✅ NEW
 // =============================================
 
-router.get('/settings', async (req, res, next) => {
+router.get('/settings/positions', async (req, res, next) => {
   try {
-    const [settings] = await query('SELECT * FROM settings LIMIT 1');
-    res.json(
-      settings || {
-        halfdayhours: 5,
-        fulldayhours: 10,
-        otthreshold: 10,
-        dotthreshold: 20,
-        dotstarthour: 20,
-        techbaserate: 50,
-        customerbaserate: 75,
-      },
-    );
+    const positions = await query('SELECT name FROM positions ORDER BY name ASC');
+    const positionNames = positions.map(p => p.name);
+    console.log('✅ Fetched positions:', positionNames);
+    res.json(positionNames);
   } catch (err) {
     next(err);
   }
 });
 
-router.put('/settings', async (req, res, next) => {
+router.post('/settings/positions', async (req, res, next) => {
   try {
-    const {
-      halfdayhours,
-      fulldayhours,
-      otthreshold,
-      dotthreshold,
-      dotstarthour,
-      techbaserate,
-      customerbaserate,
-    } = req.body;
+    const { name } = req.body;
 
-    await run(
-      `UPDATE settings
-       SET halfdayhours = ?, fulldayhours = ?, otthreshold = ?, dotthreshold = ?,
-           dotstarthour = ?, techbaserate = ?, customerbaserate = ?, updatedat = ?
-       WHERE id = 1`,
-      [
-        halfdayhours || 5,
-        fulldayhours || 10,
-        otthreshold || 10,
-        dotthreshold || 20,
-        dotstarthour || 20,
-        techbaserate || 50,
-        customerbaserate || 75,
-        new Date().toISOString(),
-      ],
-    );
-
-    const [existing] = await query('SELECT * FROM settings WHERE id = 1');
-    if (!existing) {
-      await run(
-        `INSERT INTO settings
-         (id, halfdayhours, fulldayhours, otthreshold, dotthreshold, dotstarthour,
-          techbaserate, customerbaserate, updatedat)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          halfdayhours || 5,
-          fulldayhours || 10,
-          otthreshold || 10,
-          dotthreshold || 20,
-          dotstarthour || 20,
-          techbaserate || 50,
-          customerbaserate || 75,
-          new Date().toISOString(),
-        ],
-      );
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ error: 'Position name is required and must be a string' });
     }
 
-    res.json({ success: true });
+    const trimmedName = name.trim();
+
+    if (trimmedName.length === 0) {
+      return res.status(400).json({ error: 'Position name cannot be empty' });
+    }
+
+    // Check if position already exists
+    const [existing] = await query('SELECT id FROM positions WHERE name = ?', [trimmedName]);
+    if (existing) {
+      return res.status(409).json({ error: `Position "${trimmedName}" already exists` });
+    }
+
+    // Insert new position
+    await run('INSERT INTO positions (name) VALUES (?)', [trimmedName]);
+
+    console.log(`✅ Created position: ${trimmedName}`);
+    res.status(201).json({ name: trimmedName });
   } catch (err) {
     next(err);
   }
 });
 
-// =============================================
-// POSITIONS
-// =============================================
-
-router.get('/positions', async (req, res, next) => {
+router.delete('/settings/positions/:name', async (req, res, next) => {
   try {
-    const positions = await query(
-      'SELECT DISTINCT position FROM technicians WHERE position IS NOT NULL ORDER BY position ASC',
+    const { name } = req.params;
+    const decodedName = decodeURIComponent(name);
+
+    if (!decodedName) {
+      return res.status(400).json({ error: 'Position name is required' });
+    }
+
+    // Check if position exists
+    const [existing] = await query('SELECT id FROM positions WHERE name = ?', [decodedName]);
+    if (!existing) {
+      return res.status(404).json({ error: `Position "${decodedName}" not found` });
+    }
+
+    // Check if position is in use by requirements
+    const inUseResults = await query(
+      'SELECT COUNT(*) as count FROM eventrequirements WHERE position = ?',
+      [decodedName]
     );
-    res.json(positions.map((p) => p.position));
+    const inUse = inUseResults[0] || { count: 0 };
+
+    if (inUse.count > 0) {
+      return res.status(409).json({
+        error: `Cannot delete "${decodedName}": ${inUse.count} requirement(s) use this position`,
+      });
+    }
+
+    // Delete position
+    await run('DELETE FROM positions WHERE name = ?', [decodedName]);
+
+    console.log(`✅ Deleted position: ${decodedName}`);
+    res.json({ message: `Position "${decodedName}" deleted successfully` });
   } catch (err) {
     next(err);
   }

@@ -1,384 +1,353 @@
-// frontend/src/pages/ScheduleGrid.js
+// frontend/src/pages/ScheduleGrid-Table.js - ✅ WITH DRAG-DROP TECH ASSIGNMENT
+
 import React, { useState, useEffect } from 'react';
-import { useEvents } from '../hooks/useEvents';
-import { useTechnicians } from '../hooks/useTechnicians';
-import { getScheduleData, createAssignment, updateAssignment, deleteAssignment } from '../utils/api';
-import rateCalculator from '../utils/rateCalculator';
-import '../styles/ScheduleGrid.css';
+import '../styles/ScheduleGrid-Table.css';
 
-const ScheduleGrid = ({ onNavigateToEvent }) => {
-  const { events, loading: eventsLoading } = useEvents();
-  const { technicians, loading: techsLoading } = useTechnicians();
+const ScheduleGridTable = ({
+  assignments = [],
+  requirements = [],
+  events = [],
+  technicians = [],
+  draggedTech = null,
+  onDeleteAssignment = () => {},
+  onCreateAssignment = () => {},
+}) => {
+  const [tableData, setTableData] = useState([]);
+  const [filterPosition, setFilterPosition] = useState('');
+  const [filterTech, setFilterTech] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [dragOverRow, setDragOverRow] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
 
-  // Data
-  const [assignments, setAssignments] = useState([]);
-  const [requirements, setRequirements] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-
-  // UI State
-  const [draggedPosition, setDraggedPosition] = useState(null);
-  const [draggedTech, setDraggedTech] = useState(null);
-  const [expandedEvents, setExpandedEvents] = useState({});
-  const [tempAssignments, setTempAssignments] = useState({});
-  const [editingCell, setEditingCell] = useState(null);
-
-  // Load all data
+  // Build table data from requirements and assignments
   useEffect(() => {
-    const loadAllData = async () => {
-      try {
-        setLoadingData(true);
-        const allAssignments = [];
-        const allRequirements = [];
+    const rows = [];
 
-        for (const event of events) {
-          try {
-            const data = await getScheduleData(event.id);
-            if (data.assignments) allAssignments.push(...data.assignments);
-            if (data.requirements) allRequirements.push(...data.requirements);
-          } catch (err) {
-            console.warn(`Failed to load data for event ${event.id}:`, err);
-          }
-        }
+    requirements.forEach((req) => {
+      const event = events.find((e) => e.id === req.eventid);
+      const reqAssignments = assignments.filter((a) => a.requirementid === req.id);
 
-        setAssignments(allAssignments);
-        setRequirements(allRequirements);
-
-        // Expand all events by default
-        const expanded = {};
-        events.forEach(e => {
-          expanded[e.id] = true;
+      // If requirement has assignments, create one row per assignment
+      if (reqAssignments.length > 0) {
+        reqAssignments.forEach((assign) => {
+          const tech = technicians.find((t) => t.id === assign.technicianid);
+          rows.push({
+            id: `${req.id}-${assign.id}`,
+            requirementId: req.id,
+            assignmentId: assign.id,
+            position: req.position,
+            technician: tech?.name || 'Unknown',
+            technicianId: assign.technicianid,
+            location: req.roomorlocation,
+            date: req.requirementdate,
+            eventName: event?.name || 'Unknown',
+            inTime: assign.starttime || '—',
+            outTime: assign.endtime || '—',
+            hours: assign.hoursworked || '—',
+            status: 'assigned',
+          });
         });
-        setExpandedEvents(expanded);
-      } catch (error) {
-        console.error('Error loading schedule data:', error);
-      } finally {
-        setLoadingData(false);
+      } else {
+        // If no assignment, create one row with "NEEDED"
+        rows.push({
+          id: req.id,
+          requirementId: req.id,
+          assignmentId: null,
+          position: req.position,
+          technician: 'NEEDED',
+          technicianId: null,
+          location: req.roomorlocation,
+          date: req.requirementdate,
+          eventName: event?.name || 'Unknown',
+          inTime: '—',
+          outTime: '—',
+          hours: '—',
+          status: 'needed',
+        });
       }
-    };
+    });
 
-    if (events.length > 0) {
-      loadAllData();
-    } else {
-      setLoadingData(false);
+    setTableData(rows.sort((a, b) => new Date(a.date) - new Date(b.date)));
+  }, [requirements, assignments, events, technicians]);
+
+  // Apply filters
+  const getFilteredData = () => {
+    return tableData.filter((row) => {
+      const matchPosition = !filterPosition ||
+        row.position.toLowerCase().includes(filterPosition.toLowerCase());
+      const matchTech = !filterTech ||
+        row.technician.toLowerCase().includes(filterTech.toLowerCase());
+      const matchDate = !filterDate || row.date === filterDate;
+
+      return matchPosition && matchTech && matchDate;
+    });
+  };
+
+  const filteredData = getFilteredData();
+
+  // ==================== DRAG HANDLERS ====================
+
+  const handleDragOver = (e, rowId) => {
+    if (!draggedTech) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverRow(rowId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverRow(null);
+  };
+
+  // ASSIGN TECH to NEEDED slot
+  const handleDropTech = async (e, row) => {
+    e.preventDefault();
+    setDragOverRow(null);
+
+    if (!draggedTech) return;
+
+    // Only allow dropping on "NEEDED" or existing assignments (for replacement)
+    if (row.status !== 'needed' && row.status !== 'assigned') return;
+
+    const confirmMessage =
+      row.status === 'assigned'
+        ? `Replace ${row.technician} with ${draggedTech.name}?`
+        : `Assign ${draggedTech.name} to ${row.position}?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      // Delete existing assignment if replacing
+      if (row.assignmentId) {
+        await onDeleteAssignment(row.assignmentId);
+      }
+
+      // Create new assignment
+      const payload = {
+        eventid: row.eventName,
+        technicianid: draggedTech.id,
+        requirementid: row.requirementId,
+        position: row.position,
+        roomorlocation: row.location,
+        assignmentdate: row.date,
+        starttime: '09:00',
+        endtime: '17:00',
+      };
+
+      console.log('📤 Creating assignment:', payload);
+      await onCreateAssignment(payload);
+
+      console.log('✅ Assignment created successfully');
+    } catch (err) {
+      console.error('Error assigning tech:', err);
     }
-  }, [events]);
+  };
 
   // ==================== HELPERS ====================
 
-  const getTech = (techId) => technicians.find(t => t.id === techId);
-  const getEvent = (eventId) => events.find(e => e.id === eventId);
-  const getRequirement = (reqId) => requirements.find(r => r.id === reqId);
-
-  // Get all positions (unique)
-  const getAvailablePositions = () => {
-    const positions = new Set();
-    requirements.forEach(r => {
-      if (r.position) positions.add(r.position);
-    });
-    return Array.from(positions).sort();
-  };
-
-  // Get unassigned technicians for drag pool
-  const getUnassignedTechs = () => {
-    return technicians.filter(t => {
-      const assigned = assignments.some(a => a.technician_id === t.id);
-      return !assigned;
+  const formatDate = (isoDate) => {
+    if (!isoDate) return '—';
+    return new Date(isoDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     });
   };
 
-  // Get assignments for an event
-  const getEventAssignments = (eventId) => {
-    return assignments.filter(a => {
-      const req = getRequirement(a.requirement_id);
-      return req && req.event_id === eventId;
-    });
+  const getUniquePositions = () => {
+    return [...new Set(tableData.map((row) => row.position))].sort();
   };
 
-  // ==================== DRAG & DROP ====================
-
-  const handlePositionDragStart = (e, position) => {
-    setDraggedPosition(position);
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-  const handleTechDragStart = (e, tech) => {
-    setDraggedTech(tech);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleEventDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleEventDrop = (e, eventId) => {
-    e.preventDefault();
-
-    // If dragging position → create new requirement
-    if (draggedPosition) {
-      const event = getEvent(eventId);
-      if (!event) return;
-
-      // Create temp requirement (will need real requirement in future)
-      const tempReq = {
-        id: `temp-${Date.now()}`,
-        event_id: eventId,
-        position: draggedPosition,
-        room_or_location: event.eventName,
-        start_time: '09:00',
-        end_time: '17:00',
-        requirement_date: event.start_date,
-        techs_needed: 1
-      };
-
-      setRequirements([...requirements, tempReq]);
-      setExpandedEvents(prev => ({ ...prev, [eventId]: true }));
-      setDraggedPosition(null);
-    }
-
-    // If dragging tech → assign to requirement
-    if (draggedTech && e.dataTransfer.getData('requirementId')) {
-      const reqId = e.dataTransfer.getData('requirementId');
-      const requirement = getRequirement(reqId);
-      if (!requirement) return;
-
-      const newAssignment = {
-        id: `temp-${Date.now()}`,
-        technician_id: draggedTech.id,
-        requirement_id: reqId,
-        position: requirement.position,
-        rate_type: 'hourly',
-        hours_worked: 8,
-        tech_rate: null,
-        bill_rate: null
-      };
-
-      setAssignments([...assignments, newAssignment]);
-      setDraggedTech(null);
-    }
-  };
-
-  // ==================== CELL EDITING ====================
-
-  const handleCellChange = (assignmentId, field, value) => {
-    setAssignments(assignments.map(a =>
-      a.id === assignmentId ? { ...a, [field]: value } : a
-    ));
-  };
-
-  const handleCellBlur = async (assignment) => {
-    // If temp ID, don't save yet
-    if (assignment.id.startsWith('temp-')) {
-      return;
-    }
-
-    // TODO: Call API to save
-    // await updateAssignment(assignment.id, assignment);
-  };
-
-  const handleDeleteAssignment = (assignmentId) => {
-    setAssignments(assignments.filter(a => a.id !== assignmentId));
+  const getUniqueTechs = () => {
+    return [...new Set(tableData.map((row) => row.technician).filter((t) => t !== 'NEEDED'))].sort();
   };
 
   // ==================== RENDER ====================
 
-  if (eventsLoading || techsLoading || loadingData) {
-    return <div className="schedule-table loading">📋 Loading schedule...</div>;
-  }
-
-  const positions = getAvailablePositions();
-  const unassignedTechs = getUnassignedTechs();
-
   return (
-    <div className="schedule-table">
-      {/* Header */}
-      <div className="schedule-header">
-        <h1>📋 Schedule Grid</h1>
+    <div className="schedule-grid-table">
+      {/* Header with Title */}
+      <div className="table-header">
+        <h2>📋 All Assignments</h2>
+        <div className="header-stats">
+          <span className="stat">Total: {tableData.length}</span>
+          <span className="stat">Assigned: {tableData.filter((r) => r.status === 'assigned').length}</span>
+          <span className="stat">Needed: {tableData.filter((r) => r.status === 'needed').length}</span>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="schedule-content">
-        {/* Left Sidebar */}
-        <div className="sidebar">
-          {/* Positions Section */}
-          <div className="sidebar-section">
-            <div className="section-header">📌 Positions</div>
-            <div className="positions-list">
-              {positions.map(position => (
-                <div
-                  key={position}
-                  draggable
-                  onDragStart={(e) => handlePositionDragStart(e, position)}
-                  className="position-card"
-                  title="Drag to event to create new assignment"
-                >
-                  {position}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Technicians Section */}
-          <div className="sidebar-section">
-            <div className="section-header">👤 Available Techs</div>
-            <div className="techs-list">
-              {unassignedTechs.map(tech => (
-                <div
-                  key={tech.id}
-                  draggable
-                  onDragStart={(e) => handleTechDragStart(e, tech)}
-                  className="tech-card"
-                  title={`${tech.name} (${tech.position})`}
-                >
-                  <div className="tech-name">{tech.name}</div>
-                  <div className="tech-position">{tech.position || 'Tech'}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Filters */}
+      <div className="table-filters">
+        <div className="filter-group">
+          <label>Position:</label>
+          <select
+            className="filter-select"
+            value={filterPosition}
+            onChange={(e) => setFilterPosition(e.target.value)}
+          >
+            <option value="">All Positions</option>
+            {getUniquePositions().map((pos) => (
+              <option key={pos} value={pos}>
+                {pos}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Main Table Area */}
-        <div className="table-area">
-          {/* Table */}
-          <div className="table-container">
-            {/* Header Row */}
-            <div className="table-header-row">
-              <div className="col col-position">Position</div>
-              <div className="col col-technician">Technician</div>
-              <div className="col col-location">Location</div>
-              <div className="col col-date">Date</div>
-              <div className="col col-in">In</div>
-              <div className="col col-out">Out</div>
-              <div className="col col-hours">Hours</div>
-              <div className="col col-actions">Actions</div>
-            </div>
+        <div className="filter-group">
+          <label>Technician:</label>
+          <select
+            className="filter-select"
+            value={filterTech}
+            onChange={(e) => setFilterTech(e.target.value)}
+          >
+            <option value="">All Techs</option>
+            {getUniqueTechs().map((tech) => (
+              <option key={tech} value={tech}>
+                {tech}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            {/* Event Sections */}
-            {events.map(event => {
-              const eventAssignments = getEventAssignments(event.id);
-              const isExpanded = expandedEvents[event.id];
+        <div className="filter-group">
+          <label>Date:</label>
+          <input
+            type="date"
+            className="filter-input"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+          />
+        </div>
 
-              return (
-                <div key={event.id} className="event-group">
-                  {/* Event Header */}
-                  <div
-                    className="event-header-row"
-                    onClick={() => setExpandedEvents(prev => ({
-                      ...prev,
-                      [event.id]: !isExpanded
-                    }))}
-                    onDragOver={handleEventDragOver}
-                    onDrop={(e) => handleEventDrop(e, event.id)}
+        {(filterPosition || filterTech || filterDate) && (
+          <button
+            className="btn btn--sm btn--outline"
+            onClick={() => {
+              setFilterPosition('');
+              setFilterTech('');
+              setFilterDate('');
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="table-wrapper">
+        {filteredData.length === 0 ? (
+          <div className="empty-table">
+            <p>
+              {tableData.length === 0
+                ? 'No assignments yet. Add requirements from the Schedule Grid.'
+                : 'No results match your filters.'}
+            </p>
+          </div>
+        ) : (
+          <table className="assignments-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Technician</th>
+                <th>Location</th>
+                <th>Date</th>
+                <th>In</th>
+                <th>Out</th>
+                <th>Hours</th>
+                <th>Event</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`assignment-row ${row.status} ${
+                    dragOverRow === row.id ? 'drag-over' : ''
+                  }`}
+                  onDragOver={(e) => handleDragOver(e, row.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDropTech(e, row)}
+                >
+                  <td className="cell-position">
+                    <span className="badge">{row.position}</span>
+                  </td>
+
+                  <td
+                    className={`cell-technician ${row.status}`}
+                    onMouseEnter={() => {
+                      if (draggedTech && row.status === 'needed') {
+                        setTooltip({
+                          text: `Drop ${draggedTech.name} here`,
+                          x: 0,
+                          y: 0,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
                   >
-                    <div className="toggle">{isExpanded ? '▼' : '▶'}</div>
-                    <div className="event-name">{event.eventName || event.name || 'Untitled Event'}</div>
-                    <div className="event-stats">
-                      {eventAssignments.length} assignments
-                    </div>
-                  </div>
+                    {row.status === 'needed' ? (
+                      <span className="needed-badge">NEEDED</span>
+                    ) : (
+                      <>
+                        <span className="tech-name">{row.technician}</span>
+                        {row.technicianId && (
+                          <button
+                            className="btn btn--sm btn--outline"
+                            onClick={() => onDeleteAssignment(row.assignmentId)}
+                            title="Remove assignment"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
 
-                  {/* Assignments */}
-                  {isExpanded && (
-                    <div className="assignments-group">
-                      {eventAssignments.length === 0 ? (
-                        <div className="empty-message">
-                          Drag position from left → Drag tech name to assign
-                        </div>
-                      ) : (
-                        eventAssignments.map(assignment => {
-                          const tech = getTech(assignment.technician_id);
-                          const req = getRequirement(assignment.requirement_id);
+                  <td className="cell-location">{row.location}</td>
 
-                          return (
-                            <div key={assignment.id} className="assignment-row">
-                              <div className="col col-position">
-                                {req?.position || 'Unknown'}
-                              </div>
+                  <td className="cell-date">{formatDate(row.date)}</td>
 
-                              <div className="col col-technician">
-                                <input
-                                  type="text"
-                                  value={tech?.name || 'Unassigned'}
-                                  readOnly
-                                  className="cell-input"
-                                />
-                              </div>
+                  <td className="cell-time">{row.inTime}</td>
 
-                              <div className="col col-location">
-                                <input
-                                  type="text"
-                                  value={req?.room_or_location || ''}
-                                  onChange={(e) => handleCellChange(assignment.id, 'location', e.target.value)}
-                                  onBlur={() => handleCellBlur(assignment)}
-                                  className="cell-input"
-                                />
-                              </div>
+                  <td className="cell-time">{row.outTime}</td>
 
-                              <div className="col col-date">
-                                <input
-                                  type="date"
-                                  value={req?.requirement_date || ''}
-                                  onChange={(e) => handleCellChange(assignment.id, 'date', e.target.value)}
-                                  onBlur={() => handleCellBlur(assignment)}
-                                  className="cell-input"
-                                />
-                              </div>
+                  <td className="cell-hours">
+                    <strong>{row.hours}</strong>
+                  </td>
 
-                              <div className="col col-in">
-                                <input
-                                  type="time"
-                                  value={req?.start_time || ''}
-                                  onChange={(e) => handleCellChange(assignment.id, 'in_time', e.target.value)}
-                                  onBlur={() => handleCellBlur(assignment)}
-                                  className="cell-input"
-                                />
-                              </div>
+                  <td className="cell-event">
+                    <span className="event-tag">{row.eventName}</span>
+                  </td>
 
-                              <div className="col col-out">
-                                <input
-                                  type="time"
-                                  value={req?.end_time || ''}
-                                  onChange={(e) => handleCellChange(assignment.id, 'out_time', e.target.value)}
-                                  onBlur={() => handleCellBlur(assignment)}
-                                  className="cell-input"
-                                />
-                              </div>
-
-                              <div className="col col-hours">
-                                <input
-                                  type="number"
-                                  value={assignment.hours_worked || 0}
-                                  onChange={(e) => handleCellChange(assignment.id, 'hours_worked', parseFloat(e.target.value))}
-                                  onBlur={() => handleCellBlur(assignment)}
-                                  className="cell-input"
-                                  step="0.5"
-                                />
-                              </div>
-
-                              <div className="col col-actions">
-                                <button
-                                  className="btn-delete"
-                                  onClick={() => handleDeleteAssignment(assignment.id)}
-                                  title="Delete assignment"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  <td className="cell-actions">
+                    {row.assignmentId ? (
+                      <button
+                        className="btn btn--sm btn--outline"
+                        onClick={() => onDeleteAssignment(row.assignmentId)}
+                        title="Remove this assignment"
+                      >
+                        Delete
+                      </button>
+                    ) : (
+                      <span className="action-hint">Drag tech here</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
+
+      {/* Tooltip on Drag */}
+      {tooltip && draggedTech && (
+        <div className="drag-tooltip">
+          📥 Drop {draggedTech.name} to assign
+        </div>
+      )}
     </div>
   );
 };
 
-export default ScheduleGrid;
+export default ScheduleGridTable;

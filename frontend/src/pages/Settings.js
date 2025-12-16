@@ -1,26 +1,187 @@
-// frontend/src/pages/Settings.js
+// frontend/src/pages/Settings.js - UPDATED with POSITIONS MANAGEMENT
+
 import React, { useState, useEffect } from 'react';
+import { getPositions, createPosition, deletePosition } from '../utils/api';
 import '../styles/Settings.css';
+
+// ==================== POSITIONS DIALOG ====================
+
+const PositionsDialog = ({ isOpen, onClose, onSave }) => {
+  const [positions, setPositions] = useState([]);
+  const [newPosition, setNewPosition] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+
+  // Load positions on mount
+  useEffect(() => {
+    if (isOpen) {
+      loadPositions();
+    }
+  }, [isOpen]);
+
+  const loadPositions = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await getPositions();
+      setPositions(response.data || []);
+    } catch (err) {
+      console.error('Error loading positions:', err);
+      setError('Failed to load positions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPosition = async () => {
+    if (!newPosition.trim()) return;
+
+    // Check for duplicates
+    if (positions.includes(newPosition.trim())) {
+      setError(`"${newPosition}" already exists`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      await createPosition(newPosition.trim());
+      setPositions([...positions, newPosition.trim()].sort());
+      setNewPosition('');
+    } catch (err) {
+      console.error('Error adding position:', err);
+      setError(err.response?.data?.error || 'Failed to add position');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePosition = async (positionName) => {
+    if (!window.confirm(`Remove "${positionName}"?`)) return;
+
+    try {
+      setLoading(true);
+      setError('');
+      await deletePosition(positionName);
+      setPositions(positions.filter(p => p !== positionName));
+    } catch (err) {
+      console.error('Error deleting position:', err);
+      setError(err.response?.data?.error || 'Failed to delete position');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPositions = positions.filter(p =>
+    p.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Manage Positions</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          {error && <div className="error-alert">{error}</div>}
+
+          {/* Add Position */}
+          <div className="form-group">
+            <label htmlFor="new-position">Add New Position</label>
+            <div className="input-group">
+              <input
+                id="new-position"
+                type="text"
+                className="form-control"
+                placeholder="e.g., A1, LED Operator, Camera Op"
+                value={newPosition}
+                onChange={(e) => setNewPosition(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') handleAddPosition();
+                }}
+                disabled={loading}
+              />
+              <button
+                className="btn btn--primary"
+                onClick={handleAddPosition}
+                disabled={loading || !newPosition.trim()}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Search Filter */}
+          <div className="form-group">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search positions..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+            />
+          </div>
+
+          {/* Positions List */}
+          <div className="positions-list">
+            {loading && filteredPositions.length === 0 ? (
+              <p className="loading-text">Loading...</p>
+            ) : filteredPositions.length === 0 ? (
+              <p className="empty-text">
+                {positions.length === 0
+                  ? 'No positions yet. Add one to get started!'
+                  : 'No positions match your search'}
+              </p>
+            ) : (
+              filteredPositions.map((position) => (
+                <div key={position} className="position-item">
+                  <span className="position-name">{position}</span>
+                  <button
+                    className="btn btn--sm btn--outline"
+                    onClick={() => handleDeletePosition(position)}
+                    disabled={loading}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="position-count">
+            Total: {positions.length} position{positions.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn--primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== MAIN SETTINGS COMPONENT ====================
 
 const Settings = () => {
   const [settings, setSettings] = useState({
-    // Business Settings
     companyName: localStorage.getItem('companyName') || 'Tech Mentor Louisville',
     companyPhone: localStorage.getItem('companyPhone') || '',
     companyEmail: localStorage.getItem('companyEmail') || '',
     companyAddress: localStorage.getItem('companyAddress') || '',
-    
-    // Invoice Settings
     invoicePrefix: localStorage.getItem('invoicePrefix') || 'INV',
     invoiceLogo: localStorage.getItem('invoiceLogo') || '',
     paymentTerms: localStorage.getItem('paymentTerms') || '30',
-    
-    // Display Settings
     theme: localStorage.getItem('theme') || 'light',
     dateFormat: localStorage.getItem('dateFormat') || 'MM/DD/YYYY',
     timeFormat: localStorage.getItem('timeFormat') || '12h',
-    
-    // Business Rules
     defaultHourlyRate: localStorage.getItem('defaultHourlyRate') || '50',
     defaultHalfDayRate: localStorage.getItem('defaultHalfDayRate') || '250',
     defaultFullDayRate: localStorage.getItem('defaultFullDayRate') || '500',
@@ -30,20 +191,19 @@ const Settings = () => {
 
   const [saveStatus, setSaveStatus] = useState('');
   const [activeTab, setActiveTab] = useState('business');
+  const [positionsDialogOpen, setPositionsDialogOpen] = useState(false);
 
   const handleInputChange = (field, value) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleSaveSettings = () => {
-    // Save to localStorage
-    Object.keys(settings).forEach(key => {
+    Object.keys(settings).forEach((key) => {
       localStorage.setItem(key, settings[key]);
     });
-
     setSaveStatus('✅ Settings saved successfully!');
     setTimeout(() => setSaveStatus(''), 3000);
   };
@@ -68,7 +228,7 @@ const Settings = () => {
         hoursPerFullDay: '8',
       };
       setSettings(defaults);
-      Object.keys(defaults).forEach(key => {
+      Object.keys(defaults).forEach((key) => {
         localStorage.setItem(key, defaults[key]);
       });
       setSaveStatus('✅ Settings reset to defaults!');
@@ -78,314 +238,315 @@ const Settings = () => {
 
   return (
     <div className="settings-page">
-      {/* Header */}
       <div className="settings-header">
-        <h1>⚙️ Settings</h1>
+        <h1>Settings</h1>
         <p>Manage your app configuration and business settings</p>
       </div>
 
-      {/* Save Status */}
-      {saveStatus && (
-        <div className="save-status">
-          {saveStatus}
-        </div>
-      )}
+      {saveStatus && <div className="save-status">{saveStatus}</div>}
 
-      {/* Tabs */}
+      {/* Tab Navigation */}
       <div className="settings-tabs">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'business' ? 'active' : ''}`}
           onClick={() => setActiveTab('business')}
         >
-          🏢 Business
+          Business
         </button>
-        <button 
+        <button
+          className={`tab-btn ${activeTab === 'positions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('positions')}
+        >
+          Positions
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'invoice' ? 'active' : ''}`}
           onClick={() => setActiveTab('invoice')}
         >
-          📄 Invoice
+          Invoice
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'display' ? 'active' : ''}`}
           onClick={() => setActiveTab('display')}
         >
-          🎨 Display
+          Display
         </button>
-        <button 
-          className={`tab-btn ${activeTab === 'rates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('rates')}
+        <button
+          className={`tab-btn ${activeTab === 'billing' ? 'active' : ''}`}
+          onClick={() => setActiveTab('billing')}
         >
-          💰 Rates
+          Billing Rates
         </button>
       </div>
 
-      {/* Settings Content */}
-      <div className="settings-content">
-        {/* Business Settings */}
-        {activeTab === 'business' && (
+      {/* BUSINESS TAB */}
+      {activeTab === 'business' && (
+        <div className="settings-content">
           <div className="settings-section">
-            <h2>Business Information</h2>
-            <p className="section-description">Configure your company details</p>
+            <h2>Company Details</h2>
+            <p className="section-description">Configure your company information</p>
 
             <div className="form-group">
               <label>Company Name</label>
-              <input 
+              <input
                 type="text"
+                className="form-input"
                 value={settings.companyName}
                 onChange={(e) => handleInputChange('companyName', e.target.value)}
-                placeholder="Your company name"
-                className="form-input"
               />
             </div>
 
             <div className="form-group">
-              <label>Phone Number</label>
-              <input 
+              <label>Phone</label>
+              <input
                 type="tel"
+                className="form-input"
                 value={settings.companyPhone}
                 onChange={(e) => handleInputChange('companyPhone', e.target.value)}
-                placeholder="(555) 123-4567"
-                className="form-input"
               />
             </div>
 
             <div className="form-group">
-              <label>Email Address</label>
-              <input 
+              <label>Email</label>
+              <input
                 type="email"
+                className="form-input"
                 value={settings.companyEmail}
                 onChange={(e) => handleInputChange('companyEmail', e.target.value)}
-                placeholder="business@example.com"
-                className="form-input"
               />
             </div>
 
             <div className="form-group">
               <label>Address</label>
-              <textarea 
+              <textarea
+                className="form-textarea"
                 value={settings.companyAddress}
                 onChange={(e) => handleInputChange('companyAddress', e.target.value)}
-                placeholder="Street Address&#10;City, State ZIP"
-                className="form-textarea"
                 rows="3"
               />
             </div>
-          </div>
-        )}
 
-        {/* Invoice Settings */}
-        {activeTab === 'invoice' && (
+            <div className="button-group">
+              <button className="btn btn--primary" onClick={handleSaveSettings}>
+                Save Settings
+              </button>
+              <button className="btn btn--outline" onClick={handleResetSettings}>
+                Reset to Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POSITIONS TAB ✅ NEW */}
+      {activeTab === 'positions' && (
+        <div className="settings-content">
+          <div className="settings-section">
+            <h2>Job Positions</h2>
+            <p className="section-description">
+              Manage the list of positions available for scheduling (e.g., A1, Camera Op, LED, etc.)
+            </p>
+
+            <div className="positions-section">
+              <p>These positions will appear in the Schedule Grid for drag-and-drop assignment.</p>
+              <button
+                className="btn btn--primary btn--lg"
+                onClick={() => setPositionsDialogOpen(true)}
+              >
+                Manage Positions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INVOICE TAB */}
+      {activeTab === 'invoice' && (
+        <div className="settings-content">
           <div className="settings-section">
             <h2>Invoice Settings</h2>
             <p className="section-description">Configure invoice defaults</p>
 
             <div className="form-group">
               <label>Invoice Prefix</label>
-              <input 
+              <input
                 type="text"
+                className="form-input"
                 value={settings.invoicePrefix}
                 onChange={(e) => handleInputChange('invoicePrefix', e.target.value)}
                 placeholder="INV"
-                maxLength="5"
-                className="form-input"
               />
-              <small>Used for invoice numbering (INV-001, INV-002, etc.)</small>
+              <small>Example: INV-2024-001</small>
             </div>
 
             <div className="form-group">
-              <label>Payment Terms (days)</label>
-              <input 
+              <label>Payment Terms (Days)</label>
+              <input
                 type="number"
+                className="form-input"
                 value={settings.paymentTerms}
                 onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
-                placeholder="30"
-                min="0"
-                max="180"
-                className="form-input"
               />
-              <small>Number of days before payment is due</small>
             </div>
 
-            <div className="form-group">
-              <label>Logo URL (optional)</label>
-              <input 
-                type="text"
-                value={settings.invoiceLogo}
-                onChange={(e) => handleInputChange('invoiceLogo', e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="form-input"
-              />
-              <small>URL to your company logo for invoices</small>
-            </div>
+            <button className="btn btn--primary" onClick={handleSaveSettings}>
+              Save Settings
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Display Settings */}
-        {activeTab === 'display' && (
+      {/* DISPLAY TAB */}
+      {activeTab === 'display' && (
+        <div className="settings-content">
           <div className="settings-section">
             <h2>Display Settings</h2>
             <p className="section-description">Customize how information is displayed</p>
 
             <div className="form-group">
               <label>Theme</label>
-              <select 
+              <select
+                className="form-select"
                 value={settings.theme}
                 onChange={(e) => handleInputChange('theme', e.target.value)}
-                className="form-select"
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
-                <option value="auto">Auto (System)</option>
               </select>
             </div>
 
             <div className="form-group">
               <label>Date Format</label>
-              <select 
+              <select
+                className="form-select"
                 value={settings.dateFormat}
                 onChange={(e) => handleInputChange('dateFormat', e.target.value)}
-                className="form-select"
               >
-                <option value="MM/DD/YYYY">MM/DD/YYYY (United States)</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY (International)</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               </select>
             </div>
 
             <div className="form-group">
               <label>Time Format</label>
-              <select 
+              <select
+                className="form-select"
                 value={settings.timeFormat}
                 onChange={(e) => handleInputChange('timeFormat', e.target.value)}
-                className="form-select"
               >
-                <option value="12h">12-hour (2:30 PM)</option>
-                <option value="24h">24-hour (14:30)</option>
+                <option value="12h">12 Hour (AM/PM)</option>
+                <option value="24h">24 Hour</option>
               </select>
             </div>
-          </div>
-        )}
 
-        {/* Rate Settings */}
-        {activeTab === 'rates' && (
+            <button className="btn btn--primary" onClick={handleSaveSettings}>
+              Save Settings
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* BILLING RATES TAB */}
+      {activeTab === 'billing' && (
+        <div className="settings-content">
           <div className="settings-section">
-            <h2>Default Technician Rates</h2>
+            <h2>Billing Rates</h2>
             <p className="section-description">Set default billing rates for technicians</p>
 
             <div className="rate-group">
               <h3>Hourly Rates</h3>
-              
+
               <div className="form-group">
                 <label>Hourly Rate ($)</label>
-                <input 
+                <input
                   type="number"
+                  className="form-input"
                   value={settings.defaultHourlyRate}
                   onChange={(e) => handleInputChange('defaultHourlyRate', e.target.value)}
-                  placeholder="50"
                   min="0"
                   step="0.01"
-                  className="form-input"
                 />
-                <small>Rate per hour of work</small>
               </div>
+            </div>
+
+            <div className="rate-group">
+              <h3>Daily Rates</h3>
 
               <div className="form-group">
                 <label>Half-Day Rate ($)</label>
-                <input 
+                <input
                   type="number"
+                  className="form-input"
                   value={settings.defaultHalfDayRate}
                   onChange={(e) => handleInputChange('defaultHalfDayRate', e.target.value)}
-                  placeholder="250"
                   min="0"
                   step="0.01"
-                  className="form-input"
                 />
               </div>
 
               <div className="form-group">
                 <label>Full-Day Rate ($)</label>
-                <input 
+                <input
                   type="number"
+                  className="form-input"
                   value={settings.defaultFullDayRate}
                   onChange={(e) => handleInputChange('defaultFullDayRate', e.target.value)}
-                  placeholder="500"
                   min="0"
                   step="0.01"
-                  className="form-input"
                 />
               </div>
-            </div>
 
-            <div className="rate-group">
-              <h3>Hour Definitions</h3>
-              
               <div className="form-group">
                 <label>Hours per Half-Day</label>
-                <input 
+                <input
                   type="number"
+                  className="form-input"
                   value={settings.hoursPerHalfDay}
                   onChange={(e) => handleInputChange('hoursPerHalfDay', e.target.value)}
-                  placeholder="4"
                   min="1"
-                  max="24"
-                  className="form-input"
                 />
-                <small>Defines what constitutes a half-day</small>
               </div>
 
               <div className="form-group">
                 <label>Hours per Full-Day</label>
-                <input 
+                <input
                   type="number"
+                  className="form-input"
                   value={settings.hoursPerFullDay}
                   onChange={(e) => handleInputChange('hoursPerFullDay', e.target.value)}
-                  placeholder="8"
                   min="1"
-                  max="24"
-                  className="form-input"
                 />
-                <small>Defines what constitutes a full-day</small>
+              </div>
+
+              <div className="rate-info">
+                <p>
+                  <strong>Example:</strong>
+                </p>
+                <p>
+                  If hourly rate is ${settings.defaultHourlyRate}/hr, half-day is $
+                  {settings.defaultHalfDayRate}, and full-day is ${settings.defaultFullDayRate}:
+                </p>
+                <ul>
+                  <li>3 hours = Hourly rate applied</li>
+                  <li>{settings.hoursPerHalfDay} hours = Half-day rate</li>
+                  <li>{settings.hoursPerFullDay}+ hours = Full-day rate</li>
+                </ul>
               </div>
             </div>
 
-            <div className="rate-info">
-              <p><strong>Example:</strong></p>
-              <p>If hourly rate is $50/hr, half-day is $250, and full-day is $500:</p>
-              <ul>
-                <li>2 hours = $100 (hourly)</li>
-                <li>4 hours = $250 (half-day)</li>
-                <li>8 hours = $500 (full-day)</li>
-              </ul>
-            </div>
+            <button className="btn btn--primary" onClick={handleSaveSettings}>
+              Save Settings
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Action Buttons */}
-      <div className="settings-actions">
-        <button 
-          onClick={handleSaveSettings}
-          className="btn-save"
-        >
-          💾 Save Settings
-        </button>
-        <button 
-          onClick={handleResetSettings}
-          className="btn-reset"
-        >
-          🔄 Reset to Defaults
-        </button>
-      </div>
-
-      {/* Info Box */}
-      <div className="settings-info">
-        <h3>ℹ️ About Settings</h3>
-        <p>
-          Settings are saved to your browser's local storage. They are specific to this device and browser. 
-          If you clear your browser cache, settings will be reset to defaults. Consider backing up your settings 
-          if you need them on multiple devices.
-        </p>
-      </div>
+      {/* Positions Dialog */}
+      <PositionsDialog
+        isOpen={positionsDialogOpen}
+        onClose={() => setPositionsDialogOpen(false)}
+      />
     </div>
   );
 };

@@ -1,3 +1,5 @@
+// frontend/src/utils/api.js
+
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3001/api';
@@ -14,13 +16,9 @@ const api = axios.create({
 // =============================================
 
 export const getEvents = () => api.get('/events');
-
 export const getEvent = (id) => api.get(`/events/${id}`);
-
 export const createEvent = (data) => api.post('/events', data);
-
 export const updateEvent = (id, data) => api.put(`/events/${id}`, data);
-
 export const deleteEvent = (id) => api.delete(`/events/${id}`);
 
 // =============================================
@@ -28,23 +26,12 @@ export const deleteEvent = (id) => api.delete(`/events/${id}`);
 // =============================================
 
 export const getEventRequirements = (eventId) => api.get(`/events/${eventId}/requirements`);
-
 export const getEventRequirementsWithCoverage = (eventId) =>
   api.get(`/events/${eventId}/requirements-with-coverage`);
-
 export const getRequirement = (id) => api.get(`/requirements/${id}`);
-
-// ✅ FIXED: Include eventId in request body so backend can parse it as JSON
-export const createRequirement = (eventId, data) => 
-  api.post(`/events/${eventId}/requirements`, {
-    ...data,
-    eventId, // Ensure eventId is in the payload for redundancy
-  });
-
+export const createRequirement = (data) => api.post(`/requirements`, data);
 export const updateRequirement = (id, data) => api.patch(`/requirements/${id}`, data);
-
 export const deleteRequirement = (id) => api.delete(`/requirements/${id}`);
-
 export const getEventLocations = (eventId) => api.get(`/events/${eventId}/locations`);
 
 // =============================================
@@ -52,26 +39,14 @@ export const getEventLocations = (eventId) => api.get(`/events/${eventId}/locati
 // =============================================
 
 export const getEventAssignments = (eventId) => api.get(`/events/${eventId}/assignments`);
-
 export const getSlotAssignments = (eventId, date, location) =>
   api.get(`/events/${eventId}/assignments/slot/${date}/${location}`);
-
 export const getAssignment = (id) => api.get(`/assignments/${id}`);
-
-export const createAssignment = (eventId, data) => 
-  api.post(`/events/${eventId}/assignments`, {
-    ...data,
-    eventId,
-  });
-
-
+export const createAssignment = (data) => api.post('/assignments', data);
 export const updateAssignment = (id, data) => api.patch(`/assignments/${id}`, data);
-
 export const deleteAssignment = (id) => api.delete(`/assignments/${id}`);
-
 export const getTechAvailability = (eventId, date, startTime, endTime) =>
   api.get(`/events/${eventId}/tech-availability/${date}/${startTime}/${endTime}`);
-
 export const bulkCreateAssignments = (assignments) => api.post('/assignments/bulk', assignments);
 
 // =============================================
@@ -79,13 +54,9 @@ export const bulkCreateAssignments = (assignments) => api.post('/assignments/bul
 // =============================================
 
 export const getTechnicians = () => api.get('/technicians');
-
 export const getTechnician = (id) => api.get(`/technicians/${id}`);
-
 export const createTechnician = (data) => api.post('/technicians', data);
-
 export const updateTechnician = (id, data) => api.put(`/technicians/${id}`, data);
-
 export const deleteTechnician = (id) => api.delete(`/technicians/${id}`);
 
 // =============================================
@@ -93,12 +64,17 @@ export const deleteTechnician = (id) => api.delete(`/technicians/${id}`);
 // =============================================
 
 export const getSettings = () => api.get('/settings');
-
 export const updateSettings = (data) => api.put('/settings', data);
-
 export const getEventSettings = (eventId) => api.get(`/events/${eventId}/settings`);
-
 export const updateEventSettings = (eventId, data) => api.patch(`/events/${eventId}/settings`, data);
+
+// =============================================
+// POSITIONS (Global Setting) ✅ NEW
+// =============================================
+
+export const getPositions = () => api.get('/settings/positions');
+export const createPosition = (name) => api.post('/settings/positions', { name });
+export const deletePosition = (name) => api.delete(`/settings/positions/${encodeURIComponent(name)}`);
 
 // =============================================
 // SCHEDULE (GRID) SPECIFIC
@@ -111,7 +87,7 @@ export const getScheduleData = async (eventId) => {
       getEventRequirements(eventId),
       getEventAssignments(eventId),
       getTechnicians(),
-      getSettings(),
+      getSettings()
     ]);
 
     return {
@@ -119,7 +95,7 @@ export const getScheduleData = async (eventId) => {
       requirements: requirements.data,
       assignments: assignments.data,
       technicians: technicians.data,
-      settings: settings.data,
+      settings: settings.data
     };
   } catch (error) {
     console.error('Error loading schedule data:', error);
