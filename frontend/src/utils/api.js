@@ -58,7 +58,12 @@ export const getSlotAssignments = (eventId, date, location) =>
 
 export const getAssignment = (id) => api.get(`/assignments/${id}`);
 
-export const createAssignment = (data) => api.post('/assignments', data);
+export const createAssignment = (eventId, data) => 
+  api.post(`/events/${eventId}/assignments`, {
+    ...data,
+    eventId,
+  });
+
 
 export const updateAssignment = (id, data) => api.patch(`/assignments/${id}`, data);
 
