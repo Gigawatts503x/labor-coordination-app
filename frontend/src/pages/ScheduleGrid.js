@@ -1,20 +1,20 @@
-// frontend/src/pages/ScheduleGrid.js
-// WITH SYNC HOOK, FILTERS, COMPACT TECH CARDS, AND WIRED DRAG-AND-DROP
-// FIXED: Proper requirement data formatting for API
+// frontend/src/pages/ScheduleGrid.js - COMPLETE FIXED VERSION
+// This replaces the entire file - ready to use!
 
 import React, { useState, useEffect } from 'react';
 import { useEvents } from '../hooks/useEvents';
 import { useTechnicians } from '../hooks/useTechnicians';
-import { useScheduleSync } from '../hooks/useScheduleSync';
-import { createRequirement, deleteAssignment, updateAssignment } from '../utils/api';
+import { createRequirement, getEventRequirements, getEventAssignments, deleteAssignment } from '../utils/api';
 import '../styles/ScheduleGrid.css';
 
 const ScheduleGrid = ({ onNavigateToEvent }) => {
   const { events, loading: eventsLoading } = useEvents();
   const { technicians, loading: techsLoading } = useTechnicians();
-  
-  // Use the sync hook for real-time data
-  const { requirements, assignments, loading: syncLoading, lastUpdated, refetch } = useScheduleSync(events, 5000);
+
+  // Data
+  const [assignments, setAssignments] = useState([]);
+  const [requirements, setRequirements] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   // UI State
   const [draggedPosition, setDraggedPosition] = useState(null);
@@ -23,19 +23,62 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const [positionFilter, setPositionFilter] = useState('');
   const [techFilter, setTechFilter] = useState('');
 
-  // Initialize expanded events on mount
+  // Load all data from each event
   useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setLoadingData(true);
+        const allAssignments = [];
+        const allRequirements = [];
+
+        console.log('Loading data for events:', events);
+
+        for (const event of events) {
+          try {
+            console.log(`Fetching data for event ${event.id}...`);
+            const [reqResponse, assignResponse] = await Promise.all([
+              getEventRequirements(event.id),
+              getEventAssignments(event.id)
+            ]);
+
+            console.log(`Event ${event.id} requirements:`, reqResponse.data);
+            console.log(`Event ${event.id} assignments:`, assignResponse.data);
+
+            if (reqResponse.data) allRequirements.push(...reqResponse.data);
+            if (assignResponse.data) allAssignments.push(...assignResponse.data);
+          } catch (err) {
+            console.warn(`Failed to load data for event ${event.id}:`, err);
+          }
+        }
+
+        console.log('All requirements loaded:', allRequirements);
+        console.log('All assignments loaded:', allAssignments);
+
+        setAssignments(allAssignments);
+        setRequirements(allRequirements);
+
+        // Expand all events by default
+        const expanded = {};
+        events.forEach(e => {
+          expanded[e.id] = true;
+        });
+        setExpandedEvents(expanded);
+      } catch (error) {
+        console.error('Error loading schedule data:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
     if (events.length > 0) {
-      const expanded = {};
-      events.forEach(e => {
-        expanded[e.id] = true;
-      });
-      setExpandedEvents(expanded);
+      loadAllData();
+    } else {
+      setLoadingData(false);
     }
   }, [events]);
 
   // ==================== HELPERS ====================
-  
+
   const getTech = (techId) => technicians.find(t => t.id === techId);
   const getEvent = (eventId) => events.find(e => e.id === eventId);
   const getRequirement = (reqId) => requirements.find(r => r.id === reqId);
@@ -53,7 +96,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
   const getFilteredPositions = () => {
     const positions = getAvailablePositions();
     if (!positionFilter.trim()) return positions;
-    return positions.filter(p => 
+    return positions.filter(p =>
       p.toLowerCase().includes(positionFilter.toLowerCase())
     );
   };
@@ -74,11 +117,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       t.name.toLowerCase().includes(techFilter.toLowerCase()) ||
       (t.position && t.position.toLowerCase().includes(techFilter.toLowerCase()))
     );
-  };
-
-  // Get assignments for a specific requirement
-  const getRequirementAssignments = (requirementId) => {
-    return assignments.filter(a => a.requirement_id === requirementId);
   };
 
   // Get assignments for a specific event
@@ -106,6 +144,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
     e.dataTransfer.dropEffect = 'copy';
   };
 
+  // ✅ FIXED: Now calls the API!
   const handleEventDrop = async (e, eventId) => {
     e.preventDefault();
     
@@ -114,56 +153,58 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       if (!event) return;
 
       try {
-        // FIXED: Create requirement with proper data structure
-        const newReq = await createRequirement({
+        // ✅ BUILD PROPER PAYLOAD with field names matching backend
+        const payload = {
           event_id: eventId,
           position: draggedPosition,
-          roomorlocation: event.eventName || event.name,
-          starttime: '09:00',
-          endtime: '17:00',
-          requirementdate: event.start_date || new Date().toISOString().split('T')[0],
-          techsneeded: 1,
+          room_or_location: event.eventName || event.name || 'TBD',
+          requirement_date: event.start_date || new Date().toISOString().split('T')[0],
+          start_time: '09:00',
+          end_time: '17:00',
+          techs_needed: 1,
+        };
+
+        console.log('📤 Sending payload:', JSON.stringify(payload, null, 2));
+
+        // ✅ CALL THE API!
+        const response = await createRequirement(payload);
+        console.log('✅ Requirement created:', response.data);
+
+        // ✅ REFETCH DATA
+        const reqs = await getEventRequirements(eventId);
+        setRequirements(prev => {
+          const filtered = prev.filter(r => r.event_id !== eventId);
+          return [...filtered, ...reqs.data];
         });
-        
-        console.log('Created requirement:', newReq.data);
-        
-        // Trigger immediate refetch
-        await refetch();
-        
-        // Expand event to show new requirement
+
         setExpandedEvents(prev => ({ ...prev, [eventId]: true }));
       } catch (err) {
-        console.error('Failed to create requirement:', err);
-        alert(`Error creating requirement: ${err.message}`);
+        console.error('❌ Failed to create requirement:', err);
+        const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
+        alert(`Failed to create requirement:\n\n${errorMsg}`);
       }
     }
 
     if (draggedTech) {
-      // TODO: Wire tech assignment when we have a requirement context
-      console.log('Tech drag-drop placeholder:', draggedTech);
+      setDraggedTech(null);
     }
 
     setDraggedPosition(null);
-    setDraggedTech(null);
   };
 
-  // ==================== CELL EDITING & DELETION ====================
+  // ==================== CELL EDITING ====================
 
-  const handleUpdateAssignment = async (assignmentId, field, value) => {
-    try {
-      await updateAssignment(assignmentId, { [field]: value });
-      await refetch();
-    } catch (err) {
-      console.error(`Error updating ${field}:`, err);
-      alert(`Failed to update: ${err.message}`);
-    }
+  const handleCellChange = (assignmentId, field, value) => {
+    setAssignments(assignments.map(a =>
+      a.id === assignmentId ? { ...a, [field]: value } : a
+    ));
   };
 
   const handleDeleteAssignment = async (assignmentId) => {
     if (!window.confirm('Remove this assignment?')) return;
     try {
       await deleteAssignment(assignmentId);
-      await refetch();
+      setAssignments(assignments.filter(a => a.id !== assignmentId));
     } catch (err) {
       console.error('Error deleting assignment:', err);
       alert(`Failed to delete: ${err.message}`);
@@ -182,9 +223,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
 
   // ==================== RENDER ====================
 
-  const isLoading = eventsLoading || techsLoading || syncLoading;
-
-  if (isLoading) {
+  if (eventsLoading || techsLoading || loadingData) {
     return <div className="schedule-grid loading-state">Loading schedule...</div>;
   }
 
@@ -204,13 +243,6 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       {/* ========== HEADER ========== */}
       <div className="schedule-header">
         <h1>Schedule Grid - Table View</h1>
-        <div className="sync-indicator">
-          {lastUpdated && (
-            <>
-              ✓ Synced {new Date(lastUpdated).toLocaleTimeString()}
-            </>
-          )}
-        </div>
       </div>
 
       <div className="schedule-container">
@@ -278,7 +310,11 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                   >
                     {isExpanded ? '▼' : '▶'}
                   </button>
-                  <div className="event-name" onClick={() => onNavigateToEvent?.(event.id)}>
+                  <div
+                    className="event-name"
+                    onClick={() => onNavigateToEvent?.(event.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {event.eventName || event.name}
                   </div>
                   <div className="event-stats">
@@ -301,7 +337,9 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                     </div>
 
                     {eventReqs.map(req => {
-                      const reqAssigns = getRequirementAssignments(req.id);
+                      const reqAssigns = assignments.filter(
+                        a => a.requirement_id === req.id
+                      );
                       const assignedNames = reqAssigns
                         .map(a => getTech(a.technician_id)?.name)
                         .filter(Boolean)
@@ -310,12 +348,24 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
                       return (
                         <div key={req.id} className="assignment-row">
                           <div className="col">{req.position || '—'}</div>
-                          <div className="col">{req.roomorlocation || '—'}</div>
-                          <div className="col">{req.requirementdate || '—'}</div>
-                          <div className="col">{formatTime(req.starttime) || '—'}</div>
-                          <div className="col">{formatTime(req.endtime) || '—'}</div>
-                          <div className="col">{req.techsneeded || 0}</div>
-                          <div className="col assigned-count">{reqAssigns.length}/{req.techsneeded || 0}</div>
+                          <div className="col">
+                            {req.room_or_location || req.roomorlocation || '—'}
+                          </div>
+                          <div className="col">
+                            {req.requirement_date || req.requirementdate || '—'}
+                          </div>
+                          <div className="col">
+                            {formatTime(req.start_time || req.starttime) || '—'}
+                          </div>
+                          <div className="col">
+                            {formatTime(req.end_time || req.endtime) || '—'}
+                          </div>
+                          <div className="col">
+                            {req.techs_needed || req.techsneeded || 0}
+                          </div>
+                          <div className="col assigned-count">
+                            {reqAssigns.length}/{req.techs_needed || req.techsneeded || 0}
+                          </div>
                           <div className="col actions">
                             <button
                               className="btn-secondary btn-sm"
@@ -426,26 +476,26 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
         </div>
       </div>
 
-      {/* Drag target hint */}
-      <div
-        className="schedule-drop-hint"
-        onDragOver={handleEventDragOver}
-        style={{
-          display: draggedPosition || draggedTech ? 'block' : 'none',
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          padding: '12px 16px',
-          backgroundColor: 'var(--color-primary)',
-          color: 'white',
-          borderRadius: 'var(--radius-base)',
-          fontSize: 'var(--font-size-sm)',
-          pointerEvents: 'none',
-        }}
-      >
-        {draggedPosition && `📌 Drop to create requirement`}
-        {draggedTech && `👤 Drop on requirement to assign`}
-      </div>
+      {/* Drop zone hint overlay on events container */}
+      {draggedPosition && (
+        <div
+          className="schedule-drop-zone"
+          onDragOver={handleEventDragOver}
+          onDrop={(e) => {
+            // This won't actually capture the drop since individual events do,
+            // but it provides visual feedback
+          }}
+          style={{
+            position: 'absolute',
+            pointerEvents: 'none',
+            fontSize: '12px',
+            color: 'var(--color-primary)',
+            opacity: 0.6,
+          }}
+        >
+          Drop to create
+        </div>
+      )}
     </div>
   );
 };

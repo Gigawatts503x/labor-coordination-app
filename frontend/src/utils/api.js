@@ -14,9 +14,13 @@ const api = axios.create({
 // =============================================
 
 export const getEvents = () => api.get('/events');
+
 export const getEvent = (id) => api.get(`/events/${id}`);
+
 export const createEvent = (data) => api.post('/events', data);
+
 export const updateEvent = (id, data) => api.put(`/events/${id}`, data);
+
 export const deleteEvent = (id) => api.delete(`/events/${id}`);
 
 // =============================================
@@ -30,8 +34,12 @@ export const getEventRequirementsWithCoverage = (eventId) =>
 
 export const getRequirement = (id) => api.get(`/requirements/${id}`);
 
-// ✅ FIXED: Accept full data object with event_id inside
-export const createRequirement = (data) => api.post(`/requirements`, data);
+// ✅ FIXED: Include eventId in request body so backend can parse it as JSON
+export const createRequirement = (eventId, data) => 
+  api.post(`/events/${eventId}/requirements`, {
+    ...data,
+    eventId, // Ensure eventId is in the payload for redundancy
+  });
 
 export const updateRequirement = (id, data) => api.patch(`/requirements/${id}`, data);
 
@@ -98,7 +106,7 @@ export const getScheduleData = async (eventId) => {
       getEventRequirements(eventId),
       getEventAssignments(eventId),
       getTechnicians(),
-      getSettings()
+      getSettings(),
     ]);
 
     return {
@@ -106,7 +114,7 @@ export const getScheduleData = async (eventId) => {
       requirements: requirements.data,
       assignments: assignments.data,
       technicians: technicians.data,
-      settings: settings.data
+      settings: settings.data,
     };
   } catch (error) {
     console.error('Error loading schedule data:', error);
