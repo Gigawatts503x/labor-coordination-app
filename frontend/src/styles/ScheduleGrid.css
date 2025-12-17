@@ -747,7 +747,6 @@ select.form-control {
   grid-template-columns: 220px 1fr 220px;
   grid-template-rows: auto auto 1fr;
   gap: var(--space-16);
-  padding: var(--space-16);
   background: var(--color-background);
   min-height: 100vh;
   overflow: auto;

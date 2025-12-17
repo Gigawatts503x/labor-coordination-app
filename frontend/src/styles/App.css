@@ -1079,7 +1079,7 @@ body {
 }
 
 .app-main {
-  max-width: 1400px;
+  max-width: 97vw;
   margin: 0 auto;
   padding: var(--space-32);
 }
