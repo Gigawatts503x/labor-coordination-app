@@ -962,18 +962,6 @@ select.form-control {
   gap: var(--space-16);
 }
 
-.event-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--duration-normal) var(--ease-standard);
-}
-
-.event-card:hover {
-  box-shadow: var(--shadow-md);
-}
 
 .event-header {
   padding: var(--space-16);
@@ -1238,10 +1226,6 @@ select.form-control {
 
   .drag-handle {
     font-size: var(--font-size-xs);
-  }
-
-  .event-card {
-    border-radius: var(--radius-base);
   }
 
   .event-header {

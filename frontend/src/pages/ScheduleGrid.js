@@ -292,7 +292,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
       </div>
 
       {/* CENTER - EVENTS GRID */}
-      <div className="schedule-center">
+      {/* <div className="schedule-center">
         <div className="events-grid">
           {events.map((event) => {
             const eventReqs = getEventRequirementsForEvent(event.id);
@@ -367,7 +367,7 @@ const ScheduleGrid = ({ onNavigateToEvent }) => {
             );
           })}
         </div>
-      </div>
+      </div> */}
 
       {/* RIGHT SIDEBAR - TECHNICIANS */}
       <div className="schedule-sidebar schedule-sidebar--right">
