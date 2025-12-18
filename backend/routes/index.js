@@ -315,7 +315,7 @@ router.post('/requirements', async (req, res, next) => {
   try {
     const id = uuid();
     const {
-      eventid,
+      eventId,
       requirementdate,
       requirementenddate,
       roomorlocation,
@@ -335,7 +335,7 @@ router.post('/requirements', async (req, res, next) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        eventid,
+        eventId,
         requirementdate || null,
         requirementenddate || null,
         roomorlocation || null,
@@ -449,7 +449,7 @@ router.post('/assignments', async (req, res, next) => {
   try {
     const id = uuid();
     const {
-      eventid,
+      eventId,
       technicianid,
       requirementid,
       position,
@@ -484,7 +484,7 @@ router.post('/assignments', async (req, res, next) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        eventid,
+        eventId,
         technicianid,
         requirementid || null,
         position || null,

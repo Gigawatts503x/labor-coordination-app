@@ -29,7 +29,11 @@ export const getEventRequirements = (eventId) => api.get(`/events/${eventId}/req
 export const getEventRequirementsWithCoverage = (eventId) =>
   api.get(`/events/${eventId}/requirements-with-coverage`);
 export const getRequirement = (id) => api.get(`/requirements/${id}`);
-export const createRequirement = (data) => api.post(`/requirements`, data);
+
+// ✅ FIXED: Now accepts eventId as first parameter
+export const createRequirement = (eventId, data) => 
+  api.post(`/requirements`, { ...data, eventId });
+
 export const updateRequirement = (id, data) => api.patch(`/requirements/${id}`, data);
 export const deleteRequirement = (id) => api.delete(`/requirements/${id}`);
 export const getEventLocations = (eventId) => api.get(`/events/${eventId}/locations`);
@@ -42,7 +46,11 @@ export const getEventAssignments = (eventId) => api.get(`/events/${eventId}/assi
 export const getSlotAssignments = (eventId, date, location) =>
   api.get(`/events/${eventId}/assignments/slot/${date}/${location}`);
 export const getAssignment = (id) => api.get(`/assignments/${id}`);
-export const createAssignment = (data) => api.post('/assignments', data);
+
+// ✅ FIXED: Now accepts eventId as first parameter
+export const createAssignment = (eventId, data) => 
+  api.post('/assignments', { ...data, eventId });
+
 export const updateAssignment = (id, data) => api.patch(`/assignments/${id}`, data);
 export const deleteAssignment = (id) => api.delete(`/assignments/${id}`);
 export const getTechAvailability = (eventId, date, startTime, endTime) =>
