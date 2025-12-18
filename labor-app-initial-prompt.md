@@ -136,8 +136,8 @@ labor-coordination-app/
 - **Fix thoroughly:** Identify issue → explain solution → output full code file ready to replace
 - **Ask first:** Briefly clarify before making functional changes
 - **Match CSS style:** Review existing design system before modifying components
-- **No surprises:** Don't change functionality without explicit approval
 - **CSS/Styling: Lead with Design System:** Any new styling should use the color tokens from App.css (--color-primary, --color-text, etc.). Check the design system variables before suggesting new colors.
+- **No surprises:** Don't change functionality without explicit approval
 
 ---
 
