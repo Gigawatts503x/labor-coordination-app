@@ -1,0 +1,195 @@
+## 🚀 Labor Coordination App - Advanced Software Builder Session
+
+I am building an application for an **AV Labor Coordinator** to coordinate event labor schedules, invoicing clients, and paying technicians. The previous thread introduced more issues than improvements.
+
+Please act as an **advanced software builder** who analyzes code connections and delivers **FIXED code files** ready to replace current files. Goal: progressively build systematically to avoid breaking functionality.
+
+---
+
+### 📁 Project Structure & File Names
+
+```
+labor-coordination-app/
+├── backend/
+│   ├── api/
+│   │   └── requirements.js
+│   ├── config/
+│   │   └── database.js
+│   ├── data/
+│   │   ├── labor.db
+│   │   ├── labor.db-shm
+│   │   └── labor.db-wal
+│   ├── node_modules/
+│   ├── routes/
+│   │   └── index.js
+│   ├── services/
+│   ├── setup/
+│   │   └── initDb.js
+│   ├── server.js
+│   ├── package-lock.json
+│   └── package.json
+│
+├── frontend/
+│   ├── node_modules/
+│   ├── public/
+│   │   ├── favicon.ico
+│   │   ├── index.html
+│   │   ├── logo192.png
+│   │   ├── logo512.png
+│   │   ├── manifest.json
+│   │   └── robots.txt
+│   │
+│   ├── src/
+│   │   ├── App.css
+│   │   ├── App.js
+│   │   ├── App.test.js
+│   │   ├── index.css
+│   │   ├── index.js
+│   │   ├── reportWebVitals.js
+│   │   ├── setupTests.js
+│   │   │
+│   │   ├── components/
+│   │   │   ├── EditableCell.js
+│   │   │   └── EditableSelectCell.js
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── useAllAssignments.js
+│   │   │   ├── useAssignments.js
+│   │   │   ├── useDataStore.js
+│   │   │   ├── useEvents.js
+│   │   │   ├── useRequirements.js
+│   │   │   ├── useScheduleSync.js
+│   │   │   ├── useSettings.js
+│   │   │   └── useTechnicians.js
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Dashboard.js
+│   │   │   ├── EventDetails.js
+│   │   │   ├── ScheduleGrid.js
+│   │   │   ├── ScheduleGrid-Gantt.js
+│   │   │   ├── ScheduleGrid-Table.js
+│   │   │   ├── Settings.js
+│   │   │   └── Technicians.js
+│   │   │
+│   │   ├── styles/
+│   │   │   ├── App.css
+│   │   │   ├── assignments-table.css
+│   │   │   ├── Dashboard.css
+│   │   │   ├── EventDetails.css
+│   │   │   ├── requirements-form.css
+│   │   │   ├── requirements-table.css
+│   │   │   ├── ScheduleGrid-Gantt.css
+│   │   │   ├── ScheduleGrid-Table.css
+│   │   │   ├── ScheduleGrid.css
+│   │   │   ├── Settings.css
+│   │   │   ├── table-dark-mode.css
+│   │   │   └── Technicians.css
+│   │   │
+│   │   └── utils/
+│   │       ├── api.js
+│   │       ├── dateUtils.js
+│   │       └── rateCalculator.js
+│   │
+│   ├── package-lock.json
+│   └── package.json
+│
+├── data/
+│   ├── labor.db
+│   ├── labor.db-shm
+│   └── labor.db-wal
+│
+├── GitHub: https://github.com/Gigawatts503x/labor-coordination-app.git
+└── README.md
+```
+
+```
+Repo Direct Link Outline
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/api/requirements.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/config/database.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/routes/index.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/setup/initDb.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/package-lock.json
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/package.json
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/components/EditableCell.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/components/EditableSelectCell.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useAllAssignments.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useAssignments.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useDataStore.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useEvents.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useRequirements.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useScheduleSync.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useSettings.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/hooks/useTechnicians.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/Dashboard.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/EventDetails.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/ScheduleGrid-Gantt.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/ScheduleGrid-Table.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/ScheduleGrid.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/Settings.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/pages/Technicians.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/App.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/Dashboard.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/EventDetails.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/ScheduleGrid-Gantt.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/ScheduleGrid-Table.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/ScheduleGrid.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/Settings.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/Technicians.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/assignments-table.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/requirements-form.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/requirements-table.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/styles/table-dark-mode.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/utils/api.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/utils/dateUtils.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/utils/rateCalculator.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/App.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/App.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/App.test.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/index.css
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/index.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/reportWebVitals.js
+https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/setupTests.js
+```
+---
+
+### ✅ Work Completed & 🔧 Issues Remaining
+
+**Recent Work Completed:**
+- ✅ ScheduleGrid table layout with drag-and-drop functionality
+- ✅ Technician assignment and role management
+- ✅ Badge styling for "NEEDED" status indicators
+- ✅ Filter system for events and technicians
+- ✅ Responsive design for mobile/tablet/desktop
+- ✅ Design system CSS with color tokens and variables
+- ✅ Gantt chart visualization for schedule
+- ✅ Event dashboard with analytics
+- ✅ Database setup and initialization
+
+**Known Issues / Still Needs Fixing:**
+- 🔧 Data between Events and Schedule pages is not updating in real time
+- 🔧 Event invoicing calculation logic needs integration
+- 🔧 Technician payment processing workflow
+- 🔧 API endpoint connections between frontend and backend
+- 🔧 Data persistence and state management across pages
+- 🔧 Form validation on invoice and payment pages
+- 🔧 Drag-and-drop functionality testing and refinement
+- 🔧 Settings persistence to database
+- 🔧 Requirements workflow and technician role assignments
+
+---
+
+### 📋 Instructions
+
+- **GitHub Source:** https://github.com/Gigawatts503x/labor-coordination-app.git Main Branch (I'll commit updates; always pull latest)
+- **Fix thoroughly:** Identify issue → explain solution → output full code file ready to replace
+- **Ask first:** Briefly clarify before making functional changes
+- **Match CSS style:** Review existing design system before modifying components
+- **CSS/Styling: Lead with Design System:** Any new styling should use the color tokens from App.css (--color-primary, --color-text, etc.). Check the design system variables before suggesting new colors.
+- **No surprises:** Don't change functionality without explicit approval
+- **z-decisions:** reference this file for the history of updates and changes made, as well as method decisions made for functions, languages, and such. 
+
+
+
+
+
+Let's begin
