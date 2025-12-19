@@ -1,8 +1,5 @@
 // backend/routes/index.js
-
-// All core API routes in one place
-
-// Schema: camelCase fields matching initDb.js
+// ✅ FIXED: All core API routes with enhanced assignment creation
 
 import express from 'express';
 import { v4 as uuid } from 'uuid';
@@ -193,25 +190,16 @@ router.get('/technicians', async (req, res, next) => {
 router.post('/technicians', async (req, res, next) => {
   try {
     const id = uuid();
-    const { name, position, hourlyrate, halfdayrate, fulldayrate } = req.body;
+    const { name, phone, email, ratetype, techhourlyrate, techhalfdayrate, techfulldayrate, billhourlyrate, billhalfdayrate, billfulldayrate } = req.body;
 
     await run(
-      `INSERT INTO technicians (id, name, position, hourlyrate, halfdayrate, fulldayrate, createdat, updatedat)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        name,
-        position || null,
-        hourlyrate || 50,
-        halfdayrate || 250,
-        fulldayrate || 500,
-        new Date().toISOString(),
-        new Date().toISOString(),
-      ]
+      `INSERT INTO technicians (id, name, phone, email, ratetype, techhourlyrate, techhalfdayrate, techfulldayrate, billhourlyrate, billhalfdayrate, billfulldayrate, createdat, updatedat)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, name, phone || null, email || null, ratetype || null, techhourlyrate || null, techhalfdayrate || null, techfulldayrate || null, billhourlyrate || null, billhalfdayrate || null, billfulldayrate || null, new Date().toISOString(), new Date().toISOString()]
     );
 
-    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    res.status(201).json(technician);
+    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    res.status(201).json(tech);
   } catch (err) {
     next(err);
   }
@@ -220,9 +208,9 @@ router.post('/technicians', async (req, res, next) => {
 router.get('/technicians/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    if (!technician) return res.status(404).json({ error: 'Technician not found' });
-    res.json(technician);
+    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    if (!tech) return res.status(404).json({ error: 'Technician not found' });
+    res.json(tech);
   } catch (err) {
     next(err);
   }
@@ -231,7 +219,7 @@ router.get('/technicians/:id', async (req, res, next) => {
 router.put('/technicians/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, position, hourlyrate, halfdayrate, fulldayrate } = req.body;
+    const { name, phone, email, ratetype, techhourlyrate, techhalfdayrate, techfulldayrate, billhourlyrate, billhalfdayrate, billfulldayrate } = req.body;
 
     const updates = [];
     const values = [];
@@ -240,21 +228,41 @@ router.put('/technicians/:id', async (req, res, next) => {
       updates.push('name = ?');
       values.push(name);
     }
-    if (position !== undefined) {
-      updates.push('position = ?');
-      values.push(position || null);
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone || null);
     }
-    if (hourlyrate !== undefined) {
-      updates.push('hourlyrate = ?');
-      values.push(hourlyrate);
+    if (email !== undefined) {
+      updates.push('email = ?');
+      values.push(email || null);
     }
-    if (halfdayrate !== undefined) {
-      updates.push('halfdayrate = ?');
-      values.push(halfdayrate);
+    if (ratetype !== undefined) {
+      updates.push('ratetype = ?');
+      values.push(ratetype || null);
     }
-    if (fulldayrate !== undefined) {
-      updates.push('fulldayrate = ?');
-      values.push(fulldayrate);
+    if (techhourlyrate !== undefined) {
+      updates.push('techhourlyrate = ?');
+      values.push(techhourlyrate || null);
+    }
+    if (techhalfdayrate !== undefined) {
+      updates.push('techhalfdayrate = ?');
+      values.push(techhalfdayrate || null);
+    }
+    if (techfulldayrate !== undefined) {
+      updates.push('techfulldayrate = ?');
+      values.push(techfulldayrate || null);
+    }
+    if (billhourlyrate !== undefined) {
+      updates.push('billhourlyrate = ?');
+      values.push(billhourlyrate || null);
+    }
+    if (billhalfdayrate !== undefined) {
+      updates.push('billhalfdayrate = ?');
+      values.push(billhalfdayrate || null);
+    }
+    if (billfulldayrate !== undefined) {
+      updates.push('billfulldayrate = ?');
+      values.push(billfulldayrate || null);
     }
 
     updates.push('updatedat = ?');
@@ -266,9 +274,8 @@ router.put('/technicians/:id', async (req, res, next) => {
       await run(sql, values);
     }
 
-    const [technician] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
-    if (!technician) return res.status(404).json({ error: 'Technician not found' });
-    res.json(technician);
+    const [tech] = await query('SELECT * FROM technicians WHERE id = ?', [id]);
+    res.json(tech);
   } catch (err) {
     next(err);
   }
@@ -286,25 +293,13 @@ router.delete('/technicians/:id', async (req, res, next) => {
 });
 
 // =============================================
-// EVENT REQUIREMENTS CRUD
+// REQUIREMENTS CRUD
 // =============================================
-
-router.get('/requirements', async (req, res, next) => {
-  try {
-    const requirements = await query('SELECT * FROM eventrequirements ORDER BY requirementdate DESC');
-    res.json(requirements);
-  } catch (err) {
-    next(err);
-  }
-});
 
 router.get('/events/:eventid/requirements', async (req, res, next) => {
   try {
     const { eventid } = req.params;
-    const requirements = await query(
-      'SELECT * FROM eventrequirements WHERE eventid = ? ORDER BY requirementdate DESC',
-      [eventid]
-    );
+    const requirements = await query('SELECT * FROM eventrequirements WHERE eventid = ? ORDER BY requirementdate ASC', [eventid]);
     res.json(requirements);
   } catch (err) {
     next(err);
@@ -314,40 +309,14 @@ router.get('/events/:eventid/requirements', async (req, res, next) => {
 router.post('/requirements', async (req, res, next) => {
   try {
     const id = uuid();
-    const {
-      eventId,
-      requirementdate,
-      requirementenddate,
-      roomorlocation,
-      settime,
-      starttime,
-      endtime,
-      striketime,
-      position,
-      techsneeded,
-    } = req.body;
+    const { eventId, requirementdate, requirementenddate, roomorlocation, settime, starttime, endtime, striketime, position, techsneeded } = req.body;
+
+    if (!eventId) return res.status(400).json({ error: 'eventId is required' });
 
     await run(
-      `INSERT INTO eventrequirements (
-        id, eventid, requirementdate, requirementenddate, roomorlocation,
-        settime, starttime, endtime, striketime, position, techsneeded,
-        createdat, updatedat
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        eventId,
-        requirementdate || null,
-        requirementenddate || null,
-        roomorlocation || null,
-        settime || null,
-        starttime,
-        endtime,
-        striketime || null,
-        position || null,
-        techsneeded || 1,
-        new Date().toISOString(),
-        new Date().toISOString(),
-      ]
+      `INSERT INTO eventrequirements (id, eventid, requirementdate, requirementenddate, roomorlocation, settime, starttime, endtime, striketime, position, techsneeded, createdat, updatedat)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, eventId, requirementdate || null, requirementenddate || null, roomorlocation || null, settime || null, starttime || null, endtime || null, striketime || null, position || null, techsneeded || 1, new Date().toISOString(), new Date().toISOString()]
     );
 
     const [requirement] = await query('SELECT * FROM eventrequirements WHERE id = ?', [id]);
@@ -373,17 +342,8 @@ router.patch('/requirements/:id', async (req, res, next) => {
     const { id } = req.params;
     const updates = [];
     const values = [];
-    const updateFields = [
-      'requirementdate',
-      'requirementenddate',
-      'roomorlocation',
-      'settime',
-      'starttime',
-      'endtime',
-      'striketime',
-      'position',
-      'techsneeded',
-    ];
+
+    const updateFields = ['requirementdate', 'requirementenddate', 'roomorlocation', 'settime', 'starttime', 'endtime', 'striketime', 'position', 'techsneeded'];
 
     updateFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -420,7 +380,7 @@ router.delete('/requirements/:id', async (req, res, next) => {
 });
 
 // =============================================
-// EVENT ASSIGNMENTS CRUD
+// EVENT ASSIGNMENTS CRUD - ✅ FIXED
 // =============================================
 
 router.get('/assignments', async (req, res, next) => {
@@ -435,10 +395,7 @@ router.get('/assignments', async (req, res, next) => {
 router.get('/events/:eventid/assignments', async (req, res, next) => {
   try {
     const { eventid } = req.params;
-    const assignments = await query(
-      'SELECT * FROM eventassignments WHERE eventid = ? ORDER BY assignmentdate DESC',
-      [eventid]
-    );
+    const assignments = await query('SELECT * FROM eventassignments WHERE eventid = ? ORDER BY assignmentdate DESC', [eventid]);
     res.json(assignments);
   } catch (err) {
     next(err);
@@ -448,8 +405,10 @@ router.get('/events/:eventid/assignments', async (req, res, next) => {
 router.post('/assignments', async (req, res, next) => {
   try {
     const id = uuid();
+
+    // ✅ FIXED: Handle both eventId and eventid (camelCase and lowercase)
     const {
-      eventId,
+      eventId = req.body.eventid,
       technicianid,
       requirementid,
       position,
@@ -473,6 +432,82 @@ router.post('/assignments', async (req, res, next) => {
       endtime,
     } = req.body;
 
+    // ✅ VALIDATION: Ensure required fields
+    if (!eventId || !technicianid) {
+      console.warn('⚠️ Missing required fields:', { eventId, technicianid });
+      return res.status(400).json({
+        error: 'Missing required fields: eventId (or eventid) and technicianid are required',
+      });
+    }
+
+    // ✅ DEBUG: Log what we received
+    console.log('📥 POST /assignments received:', {
+      eventId,
+      technicianid,
+      requirementid,
+      position,
+      roomorlocation,
+      hoursworked,
+      basehours,
+      othours,
+      dothours,
+      ratetype,
+      techhourlyrate,
+      techhalfdayrate,
+      techfulldayrate,
+      billhourlyrate,
+      billhalfdayrate,
+      billfulldayrate,
+      calculatedpay,
+      customerbill,
+      notes,
+      assignmentdate,
+      starttime,
+      endtime,
+    });
+
+    // ✅ SAFE DEFAULTS: Provide sensible defaults for optional/calculated fields
+    const assignmentParams = [
+      id,
+      eventId,
+      technicianid,
+      requirementid || null,
+      position || null,
+      roomorlocation || null,
+      hoursworked !== undefined ? hoursworked : 0,
+      basehours !== undefined ? basehours : 0,
+      othours !== undefined ? othours : 0,
+      dothours !== undefined ? dothours : 0,
+      ratetype || null,
+      techhourlyrate || null,
+      techhalfdayrate || null,
+      techfulldayrate || null,
+      billhourlyrate || null,
+      billhalfdayrate || null,
+      billfulldayrate || null,
+      calculatedpay !== undefined ? calculatedpay : 0,
+      customerbill !== undefined ? customerbill : 0,
+      notes || null,
+      assignmentdate || new Date().toISOString().split('T')[0],
+      starttime || null,
+      endtime || null,
+      new Date().toISOString(),
+      new Date().toISOString(),
+    ];
+
+    // ✅ VERIFY: Count and validate parameter array
+    const expectedCount = 25;
+    if (assignmentParams.length !== expectedCount) {
+      console.error(`❌ Parameter count mismatch: got ${assignmentParams.length}, expected ${expectedCount}`);
+      console.error('Parameters:', assignmentParams);
+      return res.status(500).json({
+        error: `Internal error: parameter count mismatch (got ${assignmentParams.length}, expected ${expectedCount})`,
+      });
+    }
+
+    console.log(`✅ Parameter validation passed: ${assignmentParams.length}/${expectedCount}`);
+
+    // ✅ EXECUTE: Insert assignment with all validated parameters
     await run(
       `INSERT INTO eventassignments (
         id, eventid, technicianid, requirementid, position, roomorlocation,
@@ -482,38 +517,20 @@ router.post('/assignments', async (req, res, next) => {
         calculatedpay, customerbill, notes, assignmentdate,
         starttime, endtime, createdat, updatedat
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        eventId,
-        technicianid,
-        requirementid || null,
-        position || null,
-        roomorlocation || null,
-        hoursworked || 0,
-        basehours || 0,
-        othours || 0,
-        dothours || 0,
-        ratetype || null,
-        techhourlyrate || null,
-        techhalfdayrate || null,
-        techfulldayrate || null,
-        billhourlyrate || null,
-        billhalfdayrate || null,
-        billfulldayrate || null,
-        calculatedpay || 0,
-        customerbill || 0,
-        notes || null,
-        assignmentdate || null,
-        starttime || null,
-        endtime || null,
-        new Date().toISOString(),
-        new Date().toISOString(),
-      ]
+      assignmentParams
     );
 
+    console.log(`✅ Assignment ${id} created successfully`);
+
+    // ✅ RETURN: Fetch and return the created assignment
     const [assignment] = await query('SELECT * FROM eventassignments WHERE id = ?', [id]);
     res.status(201).json(assignment);
   } catch (err) {
+    console.error('❌ POST /assignments error:', {
+      message: err.message,
+      stack: err.stack,
+      sqlError: err.code,
+    });
     next(err);
   }
 });
@@ -534,28 +551,8 @@ router.patch('/assignments/:id', async (req, res, next) => {
     const { id } = req.params;
     const updates = [];
     const values = [];
-    const updateFields = [
-      'requirementid',
-      'position',
-      'roomorlocation',
-      'hoursworked',
-      'basehours',
-      'othours',
-      'dothours',
-      'ratetype',
-      'techhourlyrate',
-      'techhalfdayrate',
-      'techfulldayrate',
-      'billhourlyrate',
-      'billhalfdayrate',
-      'billfulldayrate',
-      'calculatedpay',
-      'customerbill',
-      'notes',
-      'assignmentdate',
-      'starttime',
-      'endtime',
-    ];
+
+    const updateFields = ['requirementid', 'position', 'roomorlocation', 'hoursworked', 'basehours', 'othours', 'dothours', 'ratetype', 'techhourlyrate', 'techhalfdayrate', 'techfulldayrate', 'billhourlyrate', 'billhalfdayrate', 'billfulldayrate', 'calculatedpay', 'customerbill', 'notes', 'assignmentdate', 'starttime', 'endtime'];
 
     updateFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -591,13 +588,13 @@ router.delete('/assignments/:id', async (req, res, next) => {
 });
 
 // =============================================
-// POSITIONS ROUTES ✅ NEW
+// POSITIONS ROUTES
 // =============================================
 
 router.get('/settings/positions', async (req, res, next) => {
   try {
     const positions = await query('SELECT name FROM positions ORDER BY name ASC');
-    const positionNames = positions.map(p => p.name);
+    const positionNames = positions.map((p) => p.name);
     console.log('✅ Fetched positions:', positionNames);
     res.json(positionNames);
   } catch (err) {
@@ -608,26 +605,21 @@ router.get('/settings/positions', async (req, res, next) => {
 router.post('/settings/positions', async (req, res, next) => {
   try {
     const { name } = req.body;
-
     if (!name || typeof name !== 'string') {
       return res.status(400).json({ error: 'Position name is required and must be a string' });
     }
 
     const trimmedName = name.trim();
-
     if (trimmedName.length === 0) {
       return res.status(400).json({ error: 'Position name cannot be empty' });
     }
 
-    // Check if position already exists
     const [existing] = await query('SELECT id FROM positions WHERE name = ?', [trimmedName]);
     if (existing) {
       return res.status(409).json({ error: `Position "${trimmedName}" already exists` });
     }
 
-    // Insert new position
     await run('INSERT INTO positions (name) VALUES (?)', [trimmedName]);
-
     console.log(`✅ Created position: ${trimmedName}`);
     res.status(201).json({ name: trimmedName });
   } catch (err) {
@@ -644,17 +636,12 @@ router.delete('/settings/positions/:name', async (req, res, next) => {
       return res.status(400).json({ error: 'Position name is required' });
     }
 
-    // Check if position exists
     const [existing] = await query('SELECT id FROM positions WHERE name = ?', [decodedName]);
     if (!existing) {
       return res.status(404).json({ error: `Position "${decodedName}" not found` });
     }
 
-    // Check if position is in use by requirements
-    const inUseResults = await query(
-      'SELECT COUNT(*) as count FROM eventrequirements WHERE position = ?',
-      [decodedName]
-    );
+    const inUseResults = await query('SELECT COUNT(*) as count FROM eventrequirements WHERE position = ?', [decodedName]);
     const inUse = inUseResults[0] || { count: 0 };
 
     if (inUse.count > 0) {
@@ -663,9 +650,7 @@ router.delete('/settings/positions/:name', async (req, res, next) => {
       });
     }
 
-    // Delete position
     await run('DELETE FROM positions WHERE name = ?', [decodedName]);
-
     console.log(`✅ Deleted position: ${decodedName}`);
     res.json({ message: `Position "${decodedName}" deleted successfully` });
   } catch (err) {

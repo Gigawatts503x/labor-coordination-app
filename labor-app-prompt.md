@@ -4,6 +4,15 @@ I am building an application for an **AV Labor Coordinator** to coordinate event
 
 Please act as an **advanced software builder** who analyzes code connections and delivers **FIXED code files** ready to replace current files. Goal: progressively build systematically to avoid breaking functionality.
 
+## 🔗 Access Method
+
+**Quick Reference:** All GitHub files are accessible via raw.githubusercontent.com links. When starting a new session, reference this document as context and I will pull the latest files directly from GitHub to analyze and fix.
+
+**NO FILE UPLOADS NEEDED** - Just start the session and reference this prompt. I can access:
+- Any file from the URLs listed in "Repo Direct Link Outline"
+- Latest version automatically pulled from main branch
+- Multiple interconnected files for dependency analysis
+
 ---
 
 ### 📁 Project Structure & File Names
@@ -188,7 +197,8 @@ https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/head
 - **CSS/Styling: Lead with Design System:** Any new styling should use the color tokens from App.css (--color-primary, --color-text, etc.). Check the design system variables before suggesting new colors.
 - **No surprises:** Don't change functionality without explicit approval
 - **z-decisions:** reference this file for the history of updates and changes made, as well as method decisions made for functions, languages, and such. 
-- **z-decisions:** When it comes to output files, a brief explination is enough, no need for deep explination of solutions, the main point is the solutions functioning properly. 
+- **output explinations** When it comes to output files, a brief explination is enough, no need for deep explination of solutions, the main point is the solutions functioning properly. 
+- **REMEMBER-Always-Output-Files**Please use the create file tool to output the code as a downloadable file(s)
 
 
 

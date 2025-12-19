@@ -6,6 +6,15 @@ import Technicians from './pages/Technicians';
 import ScheduleGrid from './pages/ScheduleGrid';
 import Settings from './pages/Settings';
 import './styles/App.css';
+import { DataStoreProvider } from './context/DataStoreContext';
+
+function App() {
+  return (
+    <DataStoreProvider>
+      <Router>{/* your content */}</Router>
+    </DataStoreProvider>
+  );
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
