@@ -102,8 +102,9 @@ labor-coordination-app/
 └── README.md
 ```
 
-```
-Repo Direct Link Outline
+
+### Repo Direct Link Outline = please reference any of these files directly if code information is needed for improvements, fixes, etc.
+
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/api/requirements.js
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/config/database.js
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/backend/routes/index.js
@@ -149,7 +150,7 @@ https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/head
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/index.js
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/reportWebVitals.js
 https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/heads/main/frontend/src/setupTests.js
-```
+
 ---
 
 ### ✅ Work Completed & 🔧 Issues Remaining
@@ -187,6 +188,7 @@ https://raw.githubusercontent.com/Gigawatts503x/labor-coordination-app/refs/head
 - **CSS/Styling: Lead with Design System:** Any new styling should use the color tokens from App.css (--color-primary, --color-text, etc.). Check the design system variables before suggesting new colors.
 - **No surprises:** Don't change functionality without explicit approval
 - **z-decisions:** reference this file for the history of updates and changes made, as well as method decisions made for functions, languages, and such. 
+- **z-decisions:** When it comes to output files, a brief explination is enough, no need for deep explination of solutions, the main point is the solutions functioning properly. 
 
 
 
