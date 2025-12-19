@@ -1,7 +1,6 @@
 // backend/setup/initDb.js
 
 // Database initialization - creates tables and exports db instance
-
 // Called once by server.js at startup
 
 import Database from 'better-sqlite3';
@@ -46,8 +45,8 @@ export async function initializeDatabase() {
         totaltechpayout REAL DEFAULT 0,
         totallaborcost REAL DEFAULT 0,
         totalcustomerbilling REAL DEFAULT 0,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Event requirements table
@@ -63,12 +62,12 @@ export async function initializeDatabase() {
         striketime TEXT,
         position TEXT,
         techsneeded INTEGER DEFAULT 1,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
       )`,
 
-      // Technicians table
+      // Technicians table - UPDATED with all necessary columns
       `CREATE TABLE IF NOT EXISTS technicians (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -76,8 +75,17 @@ export async function initializeDatabase() {
         hourlyrate REAL DEFAULT 50,
         halfdayrate REAL DEFAULT 250,
         fulldayrate REAL DEFAULT 500,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+        phone TEXT,
+        email TEXT,
+        ratetype TEXT,
+        techhourlyrate REAL,
+        techhalfdayrate REAL,
+        techfulldayrate REAL,
+        billhourlyrate REAL,
+        billhalfdayrate REAL,
+        billfulldayrate REAL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Event assignments table
@@ -105,8 +113,8 @@ export async function initializeDatabase() {
         assignmentdate TEXT,
         starttime TEXT,
         endtime TEXT,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE,
         FOREIGN KEY (technicianid) REFERENCES technicians(id) ON DELETE CASCADE,
         FOREIGN KEY (requirementid) REFERENCES eventrequirements(id) ON DELETE SET NULL
@@ -122,7 +130,7 @@ export async function initializeDatabase() {
         dotstarthour INTEGER DEFAULT 20,
         techbaserate REAL DEFAULT 50,
         customerbaserate REAL DEFAULT 75,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Event settings table
@@ -140,20 +148,20 @@ export async function initializeDatabase() {
         otthreshold INTEGER,
         dotthreshold INTEGER,
         dotstarthour INTEGER,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (eventid) REFERENCES events(id) ON DELETE CASCADE
       )`,
 
-      // ✅ POSITIONS TABLE - NEW
+      // Positions table
       `CREATE TABLE IF NOT EXISTS positions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
-        createdat DATETIME DEFAULT CURRENT_TIMESTAMP
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Indexes
-      `CREATE INDEX IF NOT EXISTS idx_events_created ON events(createdat)`,
+      `CREATE INDEX IF NOT EXISTS idx_events_created ON events(createdAt)`,
       `CREATE INDEX IF NOT EXISTS idx_requirements_event ON eventrequirements(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_event ON eventassignments(eventid)`,
       `CREATE INDEX IF NOT EXISTS idx_assignments_tech ON eventassignments(technicianid)`,
@@ -181,35 +189,43 @@ export async function initializeDatabase() {
       `✅ Tables created: events, eventrequirements, technicians, eventassignments, settings, eventsettings, positions`
     );
 
-    // ✅ Initialize sample positions if table is empty
+    // Initialize sample positions if table is empty
     try {
       const checkPositions = db.prepare('SELECT COUNT(*) as count FROM positions');
       const result = checkPositions.all()[0];
-
       if (result.count === 0) {
         console.log('📍 Initializing sample positions...');
         const insertPosition = db.prepare('INSERT INTO positions (name) VALUES (?)');
-
         const samplePositions = [
-          'A1', 'A2', 'V1', 'V2', 'LED', 'Set', 'Camera Op',
-          'L1', 'L2', 'PM', 'Strike', 'Projections', 'LD Floater', 'Rigger Lead'
+          'A1',
+          'A2',
+          'V1',
+          'V2',
+          'LED',
+          'Set',
+          'Camera Op',
+          'L1',
+          'L2',
+          'PM',
+          'Strike',
+          'Projections',
+          'LD Floater',
+          'Rigger Lead',
         ];
-
         samplePositions.forEach((position) => {
           try {
             insertPosition.run(position);
-            console.log(`  ✅ Added position: ${position}`);
+            console.log(` ✅ Added position: ${position}`);
           } catch (err) {
             // Position might already exist, skip
           }
         });
-
         console.log('✅ Sample positions initialized successfully');
       } else {
         console.log(`✅ Positions table ready (${result.count} positions found)`);
       }
     } catch (err) {
-      console.warn('⚠️  Could not initialize sample positions:', err.message);
+      console.warn('⚠️ Could not initialize sample positions:', err.message);
     }
 
     return db;

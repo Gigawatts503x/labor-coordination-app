@@ -1,104 +1,90 @@
-// frontend/src/App.js
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
+import ScheduleGrid from './pages/ScheduleGrid';
 import EventDetails from './pages/EventDetails';
 import Technicians from './pages/Technicians';
-import ScheduleGrid from './pages/ScheduleGrid';
 import Settings from './pages/Settings';
-import './styles/App.css';
 import { DataStoreProvider } from './context/DataStoreContext';
+import './styles/App.css';
 
-function App() {
+/**
+ * Main App Content Component
+ * Contains all pages and navigation
+ * This is INSIDE the DataStoreProvider
+ */
+function AppContent() {
+  const [activeNav, setActiveNav] = useState('dashboard');
+
+  const handleNavClick = (navItem) => {
+    setActiveNav(navItem);
+  };
+
   return (
-    <DataStoreProvider>
-      <Router>{/* your content */}</Router>
-    </DataStoreProvider>
+    <Router>
+      <div className="app-container">
+        {/* Navigation Header */}
+        <nav className="app-nav">
+          <div className="nav-brand">
+            <h1>AV Labor Coordinator</h1>
+          </div>
+          <div className="nav-menu">
+            <Link
+              to="/"
+              className={`nav-link ${activeNav === 'dashboard' ? 'active' : ''}`}
+              onClick={() => handleNavClick('dashboard')}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/schedule"
+              className={`nav-link ${activeNav === 'schedule' ? 'active' : ''}`}
+              onClick={() => handleNavClick('schedule')}
+            >
+              Schedule
+            </Link>
+            <Link
+              to="/technicians"
+              className={`nav-link ${activeNav === 'technicians' ? 'active' : ''}`}
+              onClick={() => handleNavClick('technicians')}
+            >
+              Technicians
+            </Link>
+            <Link
+              to="/settings"
+              className={`nav-link ${activeNav === 'settings' ? 'active' : ''}`}
+              onClick={() => handleNavClick('settings')}
+            >
+              Settings
+            </Link>
+          </div>
+        </nav>
+
+        {/* Main Content */}
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/schedule" element={<ScheduleGrid />} />
+            <Route path="/event/:eventId" element={<EventDetails />} />
+            <Route path="/technicians" element={<Technicians />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
+/**
+ * Root App Component
+ * Wraps everything with DataStoreProvider
+ * This is the ONLY function named "App"
+ */
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [selectedEventId, setSelectedEventId] = useState(null);
-
-  const handleNavigateToEvent = (eventId) => {
-    setSelectedEventId(eventId);
-    setCurrentPage('event-details');
-  };
-
-  const handleBackToDashboard = () => {
-    setCurrentPage('dashboard');
-    setSelectedEventId(null);
-  };
-
   return (
-    <div className="app">
-      {/* Navigation Bar */}
-      <nav className="app-nav">
-        <div className="nav-brand">
-          <h1>📋 Labor Coordinator</h1>
-        </div>
-        <ul className="nav-links">
-          <li>
-            <button 
-              className={currentPage === 'dashboard' ? 'active' : ''}
-              onClick={() => setCurrentPage('dashboard')}
-            >
-              📅 Events
-            </button>
-          </li>
-          <li>
-            <button 
-              className={currentPage === 'schedule' ? 'active' : ''}
-              onClick={() => setCurrentPage('schedule')}
-            >
-              🗓️ Schedule
-            </button>
-          </li>
-          <li>
-            <button 
-              className={currentPage === 'technicians' ? 'active' : ''}
-              onClick={() => setCurrentPage('technicians')}
-            >
-              👤 Technicians
-            </button>
-          </li>
-          <li>
-            <button 
-              className={currentPage === 'settings' ? 'active' : ''}
-              onClick={() => setCurrentPage('settings')}
-            >
-              ⚙️ Settings
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      {/* Main Content */}
-      <main className="app-main">
-        {currentPage === 'dashboard' && (
-          <Dashboard onNavigateToEvent={handleNavigateToEvent} />
-        )}
-        
-        {currentPage === 'event-details' && selectedEventId && (
-          <EventDetails 
-            eventId={selectedEventId}
-            onBackToDashboard={handleBackToDashboard}
-          />
-        )}
-        
-        {currentPage === 'technicians' && (
-          <Technicians />
-        )}
-        
-        {currentPage === 'schedule' && (
-          <ScheduleGrid onNavigateToEvent={handleNavigateToEvent} />
-        )}
-
-        {currentPage === 'settings' && (
-          <Settings />
-        )}
-      </main>
-    </div>
+    <DataStoreProvider>
+      <AppContent />
+    </DataStoreProvider>
   );
 }
 
